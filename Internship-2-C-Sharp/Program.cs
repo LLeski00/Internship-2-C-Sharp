@@ -1,4 +1,13 @@
 ﻿var shutdown = false;
+var user = (Id: 1, firstName: "Ivo", lastName: "Ivic", birthDate: new DateTime(2000, 12, 1));
+
+var listOfUsers = new List<(int Id, string firstName, string lastName, DateTime birthDate)>
+{
+    user,
+    (2, "Ana", "Anic", new DateTime(1999, 5, 10)),
+    (3, "Marko", "Maric", new DateTime(1985, 7, 22))
+};
+
 
 do
 {
@@ -54,7 +63,7 @@ static void UsersMenu()
     } while (!exit);
 }
 
-static void AccountsMenu()
+void AccountsMenu()
 {
     var exit = false;
     var validUser = false;
@@ -62,16 +71,26 @@ static void AccountsMenu()
     do
     {
         Console.Clear();
-        Console.WriteLine("Unesite ime i prezime korisnika: ");
-        var user = Console.ReadLine();
-        //find user
-        //if user is valid =>
-        validUser = true;
+        Console.WriteLine("Unesite ime korisnika: ");
+        var firstName = Console.ReadLine();
+        Console.WriteLine("Unesite prezime korisnika: ");
+        var lastName = Console.ReadLine();
+        var user = listOfUsers.FirstOrDefault(item => item.firstName == firstName && item.lastName == lastName);
+
+        if (user != default)
+        {
+            validUser = true;
+        }
+        else
+        {
+            Console.WriteLine("Korisnik nije pronađen!");
+            Console.ReadLine();
+        }
     } while (!validUser);
 
     do
     {
-        DisplayAccounts(/*user*/);
+        DisplayAccounts(user);
         int.TryParse(Console.ReadLine(), out var account);
 
         switch (account)
@@ -145,7 +164,7 @@ static void DisplayUsersMenu()
     Console.Write("Tvoj odabir: ");
 }
 
-static void DisplayAccounts(/*user*/)
+static void DisplayAccounts((int, string, string, DateTime) user)
 {
     Console.Clear();
     Console.WriteLine("1. Tekući račun");
