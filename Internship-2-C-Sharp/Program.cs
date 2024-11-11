@@ -8,6 +8,16 @@ struct Transaction
     public string type;
     public string category;
     public DateTime date;
+
+    public void Initialize()
+    {
+        id = 0;
+        amount = 0;
+        description = "Standardna transakcija";
+        type = string.Empty;
+        category = string.Empty;
+        date = DateTime.MinValue;
+    }
 }
 
 struct Account
@@ -106,7 +116,7 @@ class Program
                     exit = true;
                     break;
                 case 1:
-                    Adduser();
+                    AddUser();
                     break;
                 case 2:
                     DeleteUser();
@@ -129,6 +139,7 @@ class Program
     {
         var exit = false;
         var user = FindUserByName();
+        var userIndex = users.FindIndex(item => item.id == user.id);
 
         do
         {
@@ -143,7 +154,7 @@ class Program
                 case 1:
                 case 2:
                 case 3:
-                    TransactionsManagement(/*account*/);
+                    users[userIndex] = TransactionsManagement(user, account-1);
                     break;
                 default:
                     Console.WriteLine("Nepoznata opcija!");
@@ -154,7 +165,7 @@ class Program
         } while (!exit);
     }
 
-    static void TransactionsManagement(/*account*/)
+    static User TransactionsManagement(User user, int accountIndex)
     {
         var exit = false;
 
@@ -166,12 +177,15 @@ class Program
             switch (option)
             {
                 case 1:
+                    var account = AddNewTransaction(user.accounts[accountIndex]);
+                    user.accounts[accountIndex] = account;
                     break;
                 case 2:
                     break;
                 case 3:
                     break;
                 case 4:
+                    DisplayTransactions(user.accounts[accountIndex]);
                     break;
                 case 5:
                     break;
@@ -184,6 +198,8 @@ class Program
                     break;
             }
         } while (!exit);
+
+        return user;
     }
 
     static void DisplayMainMenu()
@@ -293,7 +309,20 @@ class Program
         Console.Write("Tvoj odabir: ");
     }
 
-    static void Adduser()
+    static void DisplayTransactions(Account account)
+    {
+        Console.Clear();
+        Console.WriteLine("Transakcije");
+
+        foreach(var transaction in account.transactions)
+        {
+            Console.WriteLine($"{transaction.type} - {transaction.amount} - {transaction.description} - {transaction.category} - {transaction.date}");
+        }
+
+        Console.ReadLine();
+    }
+
+    static void AddUser()
     {
         do
         {
@@ -505,6 +534,117 @@ class Program
         } while (!validUser);
 
         return user;
+    }
+
+    static Account AddNewTransaction(Account account)
+    {
+        var exit = false;
+        var transaction = new Transaction();
+        transaction.Initialize();
+
+        do
+        {
+            Console.Clear();
+            Console.WriteLine("Unos nove transakcije:");
+            Console.WriteLine("1. Trenutno izvršena transakcija");
+            Console.WriteLine("2. Ranije izvršena transakcija");
+            Console.WriteLine("0. Natrag");
+            Console.WriteLine("Tvoj odabir:");
+            int.TryParse(Console.ReadLine(), out var option);
+
+            switch (option)
+            {
+                case 0:
+                    exit = true;
+                    break;
+                case 1:
+                    transaction = AddTransactionData(transaction);
+                    transaction.date = DateTime.Now;
+                    account.balance = transaction.type == "Income" ? account.balance + transaction.amount : account.balance - transaction.amount;
+                    account.transactions.Add(transaction);
+                    break;
+                case 2:
+                    transaction = AddTransactionData(transaction);
+                    Console.WriteLine("Unesite datum transakcije: ");
+                    DateTime.TryParse(Console.ReadLine(), out transaction.date);
+                    account.balance = transaction.type == "Income" ? account.balance + transaction.amount : account.balance - transaction.amount;
+                    account.transactions.Add(transaction);
+                    break;
+                default:
+                    Console.WriteLine("Nepoznata opcija!");
+                    Console.ReadLine();
+                    break;
+            }
+        } while (!exit);
+
+        return account;
+    }
+
+    static Transaction AddTransactionData(Transaction transaction)
+    {
+        Console.Clear();
+        Console.WriteLine("Unesite tip transakcije:");
+        Console.WriteLine("1. Prihod");
+        Console.WriteLine("2. Rashod");
+        Console.WriteLine("Tvoj odabir:");
+        int.TryParse(Console.ReadLine(), out var option);
+
+        switch (option)
+        {
+            case 1:
+                transaction.type = "Income"; 
+                break;
+            case 2:
+                transaction.type = "Expense"; 
+                break;
+            default:
+                Console.WriteLine("Nepoznati tip!");
+                Console.ReadLine();
+                break;
+        }
+
+        Console.WriteLine("Unesite kategoriju transakcije:");
+
+        if (transaction.type == "Income")
+        {
+            Console.WriteLine("1. Plaća");
+            Console.WriteLine("2. Honorar");
+            Console.WriteLine("3. Poklon");
+        }
+        else
+        {
+            Console.WriteLine("1. Hrana");
+            Console.WriteLine("2. Prijevoz");
+            Console.WriteLine("3. Sport");
+        }
+
+        Console.WriteLine("Tvoj odabir:");
+        int.TryParse(Console.ReadLine(), out option);
+
+        switch (option)
+        {
+            case 1:
+                transaction.category = transaction.type == "Income" ? "Salary" : "Food";
+                break;
+            case 2:
+                transaction.category = transaction.type == "Income" ? "Fee" : "Transport";
+                break;
+            case 3:
+                transaction.category = transaction.type == "Income" ? "Gift" : "Sport";
+                break;
+            default:
+                Console.WriteLine("Nepoznata kategorija!");
+                Console.ReadLine();
+                break;
+        }
+
+        Console.WriteLine("Unesite opis transakcije:");
+        transaction.description = Console.ReadLine();
+
+        Console.WriteLine("Unesite iznos transakcije:");
+        decimal.TryParse(Console.ReadLine(), out transaction.amount);
+
+        return transaction;
     }
 }
 
