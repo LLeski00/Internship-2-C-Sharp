@@ -1,167 +1,71 @@
 ﻿using System.Security.Principal;
 
-public class Transaction
+struct Transaction
 {
-    private int id;
-    private decimal amount;
-    private string description;
-    private string type;
-    private string category;
-    private DateTime date;
-
-    public decimal GetAmount()
-    {
-        return amount;
-    }
-    public string GetDescription()
-    {
-        return description;
-    }
-    public string GetType()
-    {
-        return type;
-    }
-    public string GetCategory()
-    {
-        return category;
-    }
-    public DateTime GetDate()
-    {
-        return date;
-    }
-
-    public void SetAmount(decimal amount)
-    {
-        this.amount = amount;
-    }
-    public void SetDescription(string description)
-    {
-        this.description = description;
-    }
-    public void SetType(string type)
-    {
-        this.type = type;
-    }
-    public void SetCategory(string category)
-    {
-        this.category = category;
-    }
-    public void SetDate(DateTime date)
-    {
-        this.date = date;
-    }
+    public int id;
+    public decimal amount;
+    public string description;
+    public string type;
+    public string category;
+    public DateTime date;
 }
 
-public class Account
+struct Account
 {
-    private int id;
-    private decimal balance;
-    private string type;
-    List<Transaction> transactions;
+    public int id;
+    public decimal balance;
+    public string type;
+    public List<Transaction> transactions;
 
-    public Account(string type)
+    public void Initialize(string type)
     {
-        this.id = IDGenerator.GetNextId();
+        id = 0;
+        this.type = type;
 
-        if(type == "Tekuci racun")
-        {
-            this.balance = 100.00m;
-        }
+        if (type == "Tekući račun")
+            balance = 100.00m;
         else
-        {
-            this.balance = 0.00m;
-        }
-
-        this.type = type;
-
-    }
-
-    public decimal GetBalance()
-    {
-        return balance;
-    }
-    public List<Transaction> GetTransactions()
-    {
-        return transactions;
-    }
-
-    public void SetBalance(decimal balance)
-    {
-        this.balance = balance;
+            balance = 0.00m;
+        transactions = new List<Transaction>();
     }
 }
 
-public class User
+struct User
 {
-    private int id;
-    private string firstName;
-    private string lastName;
-    private DateTime birthDate;
-    private List<Account> accounts;
+    public int id;
+    public string firstName;
+    public string lastName;
+    public DateTime birthDate;
+    public List<Account> accounts;
 
-    public User()
+    public void Initialize()
     {
-        this.id = IDGenerator.GetNextId();
-        this.firstName = string.Empty;
-        this.lastName = string.Empty;
-        this.birthDate = DateTime.Now;
-        this.accounts = new List<Account>();
-        var currentAccount = new Account("Tekuci racun");
-        var giroAccount = new Account("Ziro racun");
-        var webPrepaidAccount = new Account("Web Prepaid racun");
-        this.accounts.Add(currentAccount);
-        this.accounts.Add(giroAccount);
-        this.accounts.Add(webPrepaidAccount);
-    }
-
-    public string GetFirstName()
-    {
-        return this.firstName;
-    }
-    public string GetLastName()
-    {
-        return this.lastName;
-    }
-    public DateTime GetBirthDate()
-    {
-        return this.birthDate;
-    }
-    public List<Account> GetAccounts()
-    {
-        return this.accounts;
-    }
-
-    public void SetFirstName(string name)
-    {
-        this.firstName = name;
-    }
-    public void SetLastName(string name)
-    {
-        this.lastName = name;
-    }
-    public void SetBirthDate(DateTime date)
-    {
-        this.birthDate = date;
-    }
-}
-
-public static class IDGenerator
-{
-    private static int lastId = 0;
-
-    public static int GetNextId()
-    {
-        return ++lastId;
+        id = 0;
+        firstName=string.Empty;
+        lastName=string.Empty;
+        birthDate = DateTime.MinValue;
+        accounts = new List<Account>();
+        var currentAccount = new Account();
+        currentAccount.Initialize("Tekući račun");
+        var giroAccount = new Account();
+        giroAccount.Initialize("Žiro račun");
+        var prepaidAccount = new Account();
+        prepaidAccount.Initialize("Prepaid račun");
+        accounts.Add(currentAccount);
+        accounts.Add(giroAccount);
+        accounts.Add(prepaidAccount);
     }
 }
 
 class Program
 {
-    static bool shutdown = false;
     static List<User> users = new List<User>();
+    static int lastUserId = 0;
 
     static void Main()
     {
+        var shutdown = false;
+
         do
         {
             DisplayMainMenu();
@@ -222,7 +126,7 @@ class Program
     static void AccountsMenu()
     {
         var exit = false;
-        var user = FindUser();
+        var user = FindUserByName();
 
         do
         {
@@ -302,12 +206,12 @@ class Program
 
     static void DisplayAccounts(User user)
     {
-        var accounts = user.GetAccounts();
+        var accounts = user.accounts;
 
         Console.Clear();
-        Console.WriteLine($"1. Tekući račun, Iznos: {accounts[0].GetBalance()} €");
-        Console.WriteLine($"2. Žiro račun, Iznos: {accounts[1].GetBalance()} €");
-        Console.WriteLine($"3. Web prepaid račun, Iznos: {accounts[2].GetBalance()} €");
+        Console.WriteLine($"1. Tekući račun, Iznos: {accounts[0].balance} €");
+        Console.WriteLine($"2. Žiro račun, Iznos: {accounts[1].balance} €");
+        Console.WriteLine($"3. Web prepaid račun, Iznos: {accounts[2].balance} €");
         Console.WriteLine("0. Natrag");
         Console.Write("Tvoj odabir: ");
     }
@@ -338,9 +242,11 @@ class Program
             if (DateTime.TryParse(Console.ReadLine(), out var date))
             {
                 var user = new User();
-                user.SetFirstName(firstName);
-                user.SetLastName(lastName);
-                user.SetBirthDate(date);
+                user.Initialize();
+                user.id = lastUserId++;
+                user.firstName = firstName;
+                user.lastName = lastName;
+                user.birthDate = date;
                 users.Add(user);
                 break;
             }
@@ -354,15 +260,74 @@ class Program
 
     static void DeleteUser()
     {
-        var user = FindUser();
-        users.Remove(user);
+        var exit = false;
+        User user = new User();
+
+        do
+        {
+            Console.Clear();
+            Console.WriteLine("Pretraga po:");
+            Console.WriteLine("1. ID");
+            Console.WriteLine("2. Ime i prezime");
+            Console.WriteLine("0. Natrag");
+            int.TryParse(Console.ReadLine(), out var filter);
+            
+            switch (filter)
+            {
+                case 0:
+                    exit = true;
+                    break;
+                case 1:
+                    user = FindUserById();
+                    users.Remove(user);
+                    Console.WriteLine("Korisnik uspješno izbrisan!");
+                    Console.ReadLine();
+                    break;
+                case 2:
+                    user = FindUserByName();
+                    users.Remove(user);
+                    Console.WriteLine("Korisnik uspješno izbrisan!");
+                    Console.ReadLine();
+                    break;
+                default:
+                    Console.WriteLine("Nepoznata opcija!");
+                    Console.ReadLine();
+                    break;
+            }
+            
+        } while (!exit);
     }
 
-    static User FindUser()
+    static User FindUserById()
     {
-        var exit = false;
         var validUser = false;
-        User user = null;
+        User user = new User();
+
+        do
+        {
+            Console.Clear();
+            Console.WriteLine("Unesite ID korisnika: ");
+            int.TryParse(Console.ReadLine(),out var id);
+            user = users.FirstOrDefault(item => item.id == id);
+
+            if (!user.Equals(default(User)))
+            {
+                validUser = true;
+            }
+            else
+            {
+                Console.WriteLine("Korisnik nije pronađen!");
+                Console.ReadLine();
+            }
+        } while (!validUser);
+
+        return user;
+    }
+
+    static User FindUserByName()
+    {
+        var validUser = false;
+        User user = new User();
 
         do
         {
@@ -371,9 +336,9 @@ class Program
             var firstName = Console.ReadLine();
             Console.WriteLine("Unesite prezime korisnika: ");
             var lastName = Console.ReadLine();
-            user = users.FirstOrDefault(item => item.GetFirstName() == firstName && item.GetLastName() == lastName);
+            user = users.FirstOrDefault(item => item.firstName == firstName && item.lastName == lastName);
 
-            if (user != default)
+            if (!user.Equals(default(User)))
             {
                 validUser = true;
             }
