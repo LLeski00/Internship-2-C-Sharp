@@ -114,6 +114,7 @@ class Program
                 case 3:
                     break;
                 case 4:
+                    DisplayUsers();
                     break;
                 default:
                     Console.WriteLine("Nepoznata opcija!");
@@ -204,6 +205,19 @@ class Program
         Console.Write("Tvoj odabir: ");
     }
 
+    static void DisplayUsers()
+    {
+        Console.Clear();
+        Console.WriteLine("KORISNICI");
+
+        foreach(var user in users)
+        {
+            Console.WriteLine($"{user.id} - {user.firstName} - {user.lastName} - {user.birthDate}");
+        }
+
+        Console.ReadLine();
+    }
+
     static void DisplayAccounts(User user)
     {
         var accounts = user.accounts;
@@ -248,6 +262,8 @@ class Program
                 user.lastName = lastName;
                 user.birthDate = date;
                 users.Add(user);
+                Console.WriteLine("Korisnik uspješno dodan!");
+                Console.ReadLine();
                 break;
             }
             else
