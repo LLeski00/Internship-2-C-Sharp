@@ -106,15 +106,16 @@ class Program
                     exit = true;
                     break;
                 case 1:
-                    AddNewUser();
+                    Adduser();
                     break;
                 case 2:
                     DeleteUser();
                     break;
                 case 3:
+                    EditUser();
                     break;
                 case 4:
-                    DisplayUsers();
+                    FilterUsers();
                     break;
                 default:
                     Console.WriteLine("Nepoznata opcija!");
@@ -205,27 +206,24 @@ class Program
         Console.Write("Tvoj odabir: ");
     }
 
-    static void DisplayUsers()
+    static void DisplaySortedUsersMenu()
     {
         Console.Clear();
-        Console.WriteLine("KORISNICI");
-
-        foreach(var user in users)
-        {
-            Console.WriteLine($"{user.id} - {user.firstName} - {user.lastName} - {user.birthDate}");
-        }
-
-        Console.ReadLine();
+        Console.WriteLine("Ispisi korisnike: ");
+        Console.WriteLine("1. Sortirani abecedno");
+        Console.WriteLine("2. Korisnici stariji od 30 godina");
+        Console.WriteLine("3. Zaduženi korisnici");
+        Console.WriteLine("0. Natrag");
+        Console.Write("Tvoj odabir: ");
     }
 
-    static void DisplayAccounts(User user)
+    static void DisplayEditUserMenu()
     {
-        var accounts = user.accounts;
-
         Console.Clear();
-        Console.WriteLine($"1. Tekući račun, Iznos: {accounts[0].balance} €");
-        Console.WriteLine($"2. Žiro račun, Iznos: {accounts[1].balance} €");
-        Console.WriteLine($"3. Web prepaid račun, Iznos: {accounts[2].balance} €");
+        Console.WriteLine("Izmjeni korisnikovo: ");
+        Console.WriteLine("1. Ime");
+        Console.WriteLine("2. Prezime");
+        Console.WriteLine("3. Datum rođenja");
         Console.WriteLine("0. Natrag");
         Console.Write("Tvoj odabir: ");
     }
@@ -242,7 +240,60 @@ class Program
         Console.Write("Tvoj odabir: ");
     }
 
-    static void AddNewUser()
+    static void DisplayUsers(List<User> sortedUsers, string filter)
+    {
+        switch (filter)
+        {
+            case "":
+                foreach (var user in sortedUsers)
+                    Console.WriteLine($"{user.id} - {user.firstName} - {user.lastName} - {user.birthDate}");
+                break;
+            case "OlderThan30":
+                foreach (var user in sortedUsers)
+                {
+                    var today = DateTime.Today;
+
+                    var age = today.Year - user.birthDate.Year;
+
+                    if (today.Month < user.birthDate.Month || (today.Month == user.birthDate.Month && today.Day < user.birthDate.Day))
+                        age--;
+
+                    if (age >= 30)
+                        Console.WriteLine($"{user.id} - {user.firstName} - {user.lastName} - {user.birthDate}");
+                }
+                break;
+            case "InDebt":
+                foreach (var user in sortedUsers)
+                {
+                    foreach (var account in user.accounts)
+                    {
+                        if (account.balance < 0.00m)
+                        {
+                            Console.WriteLine($"{user.id} - {user.firstName} - {user.lastName} - {user.birthDate}");
+                            break;
+                        }
+                    }
+                }
+                break;
+            default:
+                Console.WriteLine("Nepoznati filter!");
+                break;
+        }
+    }
+
+    static void DisplayAccounts(User user)
+    {
+        var accounts = user.accounts;
+
+        Console.Clear();
+        Console.WriteLine($"1. Tekući račun, Iznos: {accounts[0].balance} €");
+        Console.WriteLine($"2. Žiro račun, Iznos: {accounts[1].balance} €");
+        Console.WriteLine($"3. Web prepaid račun, Iznos: {accounts[2].balance} €");
+        Console.WriteLine("0. Natrag");
+        Console.Write("Tvoj odabir: ");
+    }
+
+    static void Adduser()
     {
         do
         {
@@ -311,6 +362,94 @@ class Program
                     break;
             }
             
+        } while (!exit);
+    }
+
+    static void EditUser()
+    {
+        var user = FindUserById();
+        var userIndex = users.FindIndex(item => item.id == user.id);
+        var exit = false;
+
+        do
+        {
+            DisplayEditUserMenu();
+            int.TryParse(Console.ReadLine(), out var option);
+            Console.Clear();
+
+            switch (option)
+            {
+                case 0:
+                    exit = true;
+                    break;
+                case 1:
+                    Console.WriteLine($"Trenutno ime: {user.firstName}, unesite novo ime:");
+                    user.firstName = Console.ReadLine();
+                    users[userIndex] = user;
+                    Console.WriteLine("Uspješno izmjena!");
+                    Console.ReadLine();
+                    break;
+                case 2:
+                    Console.WriteLine($"Trenutno prezime: {user.lastName}, unesite novo prezime:");
+                    user.lastName = Console.ReadLine();
+                    users[userIndex] = user;
+                    Console.WriteLine("Uspješno izmjena!");
+                    Console.ReadLine();
+                    break;
+                case 3:
+                    Console.WriteLine($"Trenutni datum rođenja: {user.birthDate}, unesite novi datum rođenja:");
+                    DateTime.TryParse( Console.ReadLine(), out user.birthDate);
+                    users[userIndex] = user;
+                    Console.WriteLine("Uspješno izmjena!");
+                    Console.ReadLine();
+                    break;
+                default:
+                    Console.WriteLine("Nepoznata opcija!");
+                    Console.ReadLine();
+                    break;
+            }
+        } while (!exit);
+    }
+
+    static void FilterUsers()
+    {
+        var exit = false;
+        var sortedUsers = users
+            .OrderBy(user => user.lastName)
+            .ThenBy(user => user.firstName)
+            .ToList();
+
+        do
+        {
+            DisplaySortedUsersMenu();
+            int.TryParse(Console.ReadLine(), out var filter);
+            Console.Clear();
+
+            switch (filter)
+            {
+                case 0:
+                    exit = true;
+                    break;
+                case 1:
+                    Console.WriteLine("KORISNICI");
+                    DisplayUsers(sortedUsers, "");
+                    Console.ReadLine();
+                    break;
+                case 2:
+                    Console.WriteLine("KORISNICI STARIJI OD 29 GODINA");
+                    DisplayUsers(sortedUsers, "OlderThan30");
+                    Console.ReadLine();
+                    break;
+                case 3:
+                    Console.WriteLine("ZADUZENI KORISNICI");
+                    DisplayUsers(sortedUsers, "InDebt");
+                    Console.ReadLine();
+                    break;
+                default:
+                    Console.WriteLine("Nepoznata opcija!");
+                    Console.ReadLine();
+                    break;
+            }
         } while (!exit);
     }
 
