@@ -1,80 +1,19 @@
-﻿using System.Security.Principal;
-
-struct Transaction
-{
-    public int id;
-    public decimal amount;
-    public string description;
-    public string type;
-    public string category;
-    public DateTime date;
-
-    public void Initialize()
-    {
-        id = 0;
-        amount = 0;
-        description = "Standardna transakcija";
-        type = string.Empty;
-        category = string.Empty;
-        date = DateTime.MinValue;
-    }
-}
-
-struct Account
-{
-    public int id;
-    public decimal balance;
-    public string type;
-    public List<Transaction> transactions;
-
-    public void Initialize(string type)
-    {
-        id = 0;
-        this.type = type;
-
-        if (type == "Tekući račun")
-            balance = 100.00m;
-        else
-            balance = 0.00m;
-        transactions = new List<Transaction>();
-    }
-}
-
-struct User
-{
-    public int id;
-    public string firstName;
-    public string lastName;
-    public DateTime birthDate;
-    public List<Account> accounts;
-
-    public void Initialize()
-    {
-        id = 0;
-        firstName=string.Empty;
-        lastName=string.Empty;
-        birthDate = DateTime.MinValue;
-        accounts = new List<Account>();
-        var currentAccount = new Account();
-        currentAccount.Initialize("Tekući račun");
-        var giroAccount = new Account();
-        giroAccount.Initialize("Žiro račun");
-        var prepaidAccount = new Account();
-        prepaidAccount.Initialize("Prepaid račun");
-        accounts.Add(currentAccount);
-        accounts.Add(giroAccount);
-        accounts.Add(prepaidAccount);
-    }
-}
+﻿using System.Reflection;
+using System.Security.Principal;
 
 class Program
 {
-    static List<User> users = new List<User>();
+    static List<Tuple<int, string, string, DateTime, List<Tuple<int, decimal, string, List<Dictionary<string, string>>>>>> users = new List<Tuple<int, string, string, DateTime, List<Tuple<int, decimal, string, List<Dictionary<string, string>>>>>>();
     static int lastUserId = 0;
+    static int lastAccountId = 0;
     static int lastTransactionId = 0;
 
     static void Main()
     {
+        users.Add(GenerateDefaultUser("Ivo", "Ivic", new DateTime(2000,11,11)));
+        users.Add(GenerateDefaultUser("Marko", "Maric", new DateTime(2000, 11, 11)));
+        users.Add(GenerateDefaultUser("Stipe", "Stipic", new DateTime(2000, 11, 11)));
+
         var shutdown = false;
 
         do
@@ -100,6 +39,64 @@ class Program
                     break;
             }
         } while (!shutdown);
+    }
+
+    static Tuple<int, string, string, DateTime, List<Tuple<int, decimal, string, List<Dictionary<string, string>>>>> GenerateDefaultUser(string name, string surname, DateTime date)
+    {
+        var transaction1 = new Dictionary<string, string>() {
+            {"id", "0"},
+            {"amount", "0.00" },
+            {"description", "Standardna transakcija"},
+            {"type", "Prihod"},
+            {"category", "Plaća"},
+            {"date", "2000-11-11"},
+        };
+        var transaction2 = new Dictionary<string, string>() {
+            {"id", "1"},
+            {"amount", "0.00" },
+            {"description", "Standardna transakcija"},
+            {"type", "Prihod"},
+            {"category", "Plaća"},
+            {"date", "2000-11-11"},
+        };
+        var transaction3 = new Dictionary<string, string>() {
+            {"id", "2"},
+            {"amount", "0.00" },
+            {"description", "Standardna transakcija"},
+            {"type", "Prihod"},
+            {"category", "Plaća"},
+            {"date", "2000-11-11"},
+        };
+
+        var currentAccountTransactions = new List<Dictionary<string, string>>();
+        currentAccountTransactions.Add(transaction1);
+        currentAccountTransactions.Add(transaction2);
+        currentAccountTransactions.Add(transaction3);
+
+        var currentAccount = Tuple.Create(0, 100.00m, "Prihod", currentAccountTransactions);
+
+        var giroAccountTransactions = new List<Dictionary<string, string>>();
+        giroAccountTransactions.Add(transaction1);
+        giroAccountTransactions.Add(transaction2);
+        giroAccountTransactions.Add(transaction3);
+
+        var giroAccount = Tuple.Create(0, 100.00m, "Prihod", giroAccountTransactions);
+
+        var prepaidAccountTransactions = new List<Dictionary<string, string>>();
+        prepaidAccountTransactions.Add(transaction1);
+        prepaidAccountTransactions.Add(transaction2);
+        prepaidAccountTransactions.Add(transaction3);
+
+        var prepaidAccount = Tuple.Create(0, 100.00m, "Prihod", prepaidAccountTransactions);
+
+        var accounts = new List<Tuple<int, decimal, string, List<Dictionary<string, string>>>>();
+        accounts.Add(currentAccount);
+        accounts.Add(giroAccount);
+        accounts.Add(prepaidAccount);
+
+        var user = Tuple.Create(lastUserId++, name, surname, date, accounts);
+
+        return user;
     }
 
     static void UsersMenu()
@@ -140,7 +137,7 @@ class Program
     {
         var exit = false;
         var user = FindUserByName();
-        var userIndex = users.FindIndex(item => item.id == user.id);
+        var userIndex = users.FindIndex(item => item.Item1 == user.Item1);
 
         do
         {
@@ -166,10 +163,10 @@ class Program
         } while (!exit);
     }
 
-    static User TransactionsManagement(User user, int accountIndex)
+    static Tuple<int, string, string, DateTime, List<Tuple<int, decimal, string, List<Dictionary<string, string>>>>> TransactionsManagement(Tuple<int, string, string, DateTime, List<Tuple<int, decimal, string, List<Dictionary<string, string>>>>> user, int accountIndex)
     {
         var exit = false;
-        var account = new Account();
+        var account = Tuple.Create(0, 0.00m, "", new List<Dictionary<string, string>>());
 
         do
         {
@@ -179,17 +176,17 @@ class Program
             switch (option)
             {
                 case 1:
-                    account = AddNewTransaction(user.accounts[accountIndex]);
-                    user.accounts[accountIndex] = account;
+                    account = AddNewTransaction(user.Item5[accountIndex]);
+                    user.Item5[accountIndex] = account;
                     break;
                 case 2:
-                    account = DeleteTransaction(user.accounts[accountIndex]);
-                    user.accounts[accountIndex] = account;
+                    account = DeleteTransaction(user.Item5[accountIndex]);
+                    user.Item5[accountIndex] = account;
                     break;
                 case 3:
                     break;
                 case 4:
-                    DisplayTransactions(user.accounts[accountIndex]);
+                    DisplayTransactions(user.Item5[accountIndex]);
                     break;
                 case 5:
                     break;
@@ -260,36 +257,36 @@ class Program
         Console.Write("Tvoj odabir: ");
     }
 
-    static void DisplayUsers(List<User> sortedUsers, string filter)
+    static void DisplayUsers(List<Tuple<int, string, string, DateTime, List<Tuple<int, decimal, string, List<Dictionary<string, string>>>>>> sortedUsers, string filter)
     {
         switch (filter)
         {
             case "":
                 foreach (var user in sortedUsers)
-                    Console.WriteLine($"{user.id} - {user.firstName} - {user.lastName} - {user.birthDate}");
+                    Console.WriteLine($"{user.Item1} - {user.Item2} - {user.Item3} - {user.Item4}");
                 break;
             case "OlderThan30":
                 foreach (var user in sortedUsers)
                 {
                     var today = DateTime.Today;
 
-                    var age = today.Year - user.birthDate.Year;
+                    var age = today.Year - user.Item4.Year;
 
-                    if (today.Month < user.birthDate.Month || (today.Month == user.birthDate.Month && today.Day < user.birthDate.Day))
+                    if (today.Month < user.Item4.Month || (today.Month == user.Item4.Month && today.Day < user.Item4.Day))
                         age--;
 
                     if (age >= 30)
-                        Console.WriteLine($"{user.id} - {user.firstName} - {user.lastName} - {user.birthDate}");
+                        Console.WriteLine($"{user.Item1} - {user.Item2} - {user.Item3} - {user.Item4}");
                 }
                 break;
             case "InDebt":
                 foreach (var user in sortedUsers)
                 {
-                    foreach (var account in user.accounts)
+                    foreach (var account in user.Item5)
                     {
-                        if (account.balance < 0.00m)
+                        if (account.Item2 < 0.00m)
                         {
-                            Console.WriteLine($"{user.id} - {user.firstName} - {user.lastName} - {user.birthDate}");
+                            Console.WriteLine($"{user.Item1} - {user.Item2} - {user.Item3} - {user.Item4}");
                             break;
                         }
                     }
@@ -301,26 +298,26 @@ class Program
         }
     }
 
-    static void DisplayAccounts(User user)
+    static void DisplayAccounts(Tuple<int, string, string, DateTime, List<Tuple<int, decimal, string, List<Dictionary<string, string>>>>> user)
     {
-        var accounts = user.accounts;
+        var accounts = user.Item5;
 
         Console.Clear();
-        Console.WriteLine($"1. Tekući račun, Iznos: {accounts[0].balance} €");
-        Console.WriteLine($"2. Žiro račun, Iznos: {accounts[1].balance} €");
-        Console.WriteLine($"3. Web prepaid račun, Iznos: {accounts[2].balance} €");
+        Console.WriteLine($"1. Tekući račun, Iznos: {accounts[0].Item2} €");
+        Console.WriteLine($"2. Žiro račun, Iznos: {accounts[1].Item2} €");
+        Console.WriteLine($"3. Web prepaid račun, Iznos: {accounts[2].Item2} €");
         Console.WriteLine("0. Natrag");
         Console.Write("Tvoj odabir: ");
     }
 
-    static void DisplayTransactions(Account account)
+    static void DisplayTransactions(Tuple<int, decimal, string, List<Dictionary<string, string>>> account)
     {
         Console.Clear();
         Console.WriteLine("Transakcije");
 
-        foreach(var transaction in account.transactions)
+        foreach(var transaction in account.Item4)
         {
-            Console.WriteLine($"{transaction.type} - {transaction.amount} - {transaction.description} - {transaction.category} - {transaction.date}");
+            Console.WriteLine($"{transaction["type"]} - {transaction["amount"]} - {transaction["description"]} - {transaction["category"]} - {transaction["date"]}");
         }
 
         Console.ReadLine();
@@ -337,14 +334,9 @@ class Program
             var lastName = Console.ReadLine();
             Console.Write("Unesite datum rodenja (YYYY-MM-DD): ");
 
-            if (DateTime.TryParse(Console.ReadLine(), out var date))
+            if (DateTime.TryParse(Console.ReadLine(), out var date) && firstName != null && lastName != null)
             {
-                var user = new User();
-                user.Initialize();
-                user.id = lastUserId++;
-                user.firstName = firstName;
-                user.lastName = lastName;
-                user.birthDate = date;
+                var user = GenerateDefaultUser(firstName, lastName, date);
                 users.Add(user);
                 Console.WriteLine("Korisnik uspješno dodan!");
                 Console.ReadLine();
@@ -352,7 +344,7 @@ class Program
             }
             else
             {
-                Console.WriteLine("Pogreska pri unosenju datuma rodenja!");
+                Console.WriteLine("Pogreska pri unosenju!");
                 Console.ReadLine();
             }
         } while (true);
@@ -361,7 +353,7 @@ class Program
     static void DeleteUser()
     {
         var exit = false;
-        User user = new User();
+        var user = GenerateDefaultUser("", "", DateTime.Now);
 
         do
         {
@@ -378,7 +370,8 @@ class Program
                     exit = true;
                     break;
                 case 1:
-                    user = FindUserById();
+                    var id = InputUserId();
+                    user = FindUserById(id);
                     users.Remove(user);
                     Console.WriteLine("Korisnik uspješno izbrisan!");
                     Console.ReadLine();
@@ -400,12 +393,15 @@ class Program
 
     static void EditUser()
     {
-        var user = FindUserById();
-        var userIndex = users.FindIndex(item => item.id == user.id);
+        var id = InputUserId();
+        var user = FindUserById(id);
+        var newUser = GenerateDefaultUser("", "", DateTime.Now);
+        var userIndex = users.FindIndex(item => item.Item1 == user.Item1);
         var exit = false;
 
         do
         {
+            user = FindUserById(id);
             DisplayEditUserMenu();
             int.TryParse(Console.ReadLine(), out var option);
             Console.Clear();
@@ -416,24 +412,41 @@ class Program
                     exit = true;
                     break;
                 case 1:
-                    Console.WriteLine($"Trenutno ime: {user.firstName}, unesite novo ime:");
-                    user.firstName = Console.ReadLine();
-                    users[userIndex] = user;
-                    Console.WriteLine("Uspješno izmjena!");
+                    Console.WriteLine($"Trenutno ime: {user.Item2}, unesite novo ime:");
+                    var firstName = Console.ReadLine();
+                    if (firstName == null) {
+                        Console.WriteLine("Niste unijeli ime!");
+                        break;
+                    }
+                    newUser = Tuple.Create(user.Item1, firstName, user.Item3, user.Item4, user.Item5);
+                    Console.WriteLine($"{userIndex}");
+                    users[userIndex] = newUser;
+                    Console.WriteLine("Uspješna izmjena!");
                     Console.ReadLine();
                     break;
                 case 2:
-                    Console.WriteLine($"Trenutno prezime: {user.lastName}, unesite novo prezime:");
-                    user.lastName = Console.ReadLine();
-                    users[userIndex] = user;
-                    Console.WriteLine("Uspješno izmjena!");
+                    Console.WriteLine($"Trenutno prezime: {user.Item3}, unesite novo prezime:");
+                    var lastName = Console.ReadLine();
+                    if (lastName == null)
+                    {
+                        Console.WriteLine("Niste unijeli ime!");
+                        break;
+                    }
+                    newUser = Tuple.Create(user.Item1, user.Item2, lastName, user.Item4, user.Item5);
+                    users[userIndex] = newUser;
+                    Console.WriteLine("Uspješna izmjena!");
                     Console.ReadLine();
                     break;
                 case 3:
-                    Console.WriteLine($"Trenutni datum rođenja: {user.birthDate}, unesite novi datum rođenja:");
-                    DateTime.TryParse( Console.ReadLine(), out user.birthDate);
+                    Console.WriteLine($"Trenutni datum rođenja: {user.Item4}, unesite novi datum rođenja:");
+                    if(!DateTime.TryParse(Console.ReadLine(), out var birthdate))
+                    {
+                        Console.WriteLine("Nepoznat format datuma!");
+                        break;
+                    }
+                    newUser = Tuple.Create(user.Item1, user.Item2, user.Item3, birthdate, user.Item5);
                     users[userIndex] = user;
-                    Console.WriteLine("Uspješno izmjena!");
+                    Console.WriteLine("Uspješna izmjena!");
                     Console.ReadLine();
                     break;
                 default:
@@ -448,8 +461,8 @@ class Program
     {
         var exit = false;
         var sortedUsers = users
-            .OrderBy(user => user.lastName)
-            .ThenBy(user => user.firstName)
+            .OrderBy(user => user.Item3)
+            .ThenBy(user => user.Item2)
             .ToList();
 
         do
@@ -486,19 +499,31 @@ class Program
         } while (!exit);
     }
 
-    static User FindUserById()
+    static int InputUserId()
     {
-        var validUser = false;
-        User user = new User();
+        var id = 0;
 
         do
         {
             Console.Clear();
             Console.WriteLine("Unesite ID korisnika: ");
-            int.TryParse(Console.ReadLine(),out var id);
-            user = users.FirstOrDefault(item => item.id == id);
+            if (int.TryParse(Console.ReadLine(), out id))
+                break;
+        } while (true);
 
-            if (!user.Equals(default(User)))
+        return id;
+    }
+
+    static Tuple<int, string, string, DateTime, List<Tuple<int, decimal, string, List<Dictionary<string, string>>>>> FindUserById(int id)
+    {
+        var validUser = false;
+        var user = GenerateDefaultUser("", "", DateTime.Now);
+
+        do
+        {
+            user = users.FirstOrDefault(item => item.Item1 == id);
+
+            if (user != null && !user.Equals(default(Tuple<int, string, string, DateTime, List<Tuple<int, decimal, string, List<Dictionary<string, string>>>>>)))
             {
                 validUser = true;
             }
@@ -512,10 +537,10 @@ class Program
         return user;
     }
 
-    static User FindUserByName()
+    static Tuple<int, string, string, DateTime, List<Tuple<int, decimal, string, List<Dictionary<string, string>>>>> FindUserByName()
     {
         var validUser = false;
-        User user = new User();
+        var user = GenerateDefaultUser("", "", DateTime.Now);
 
         do
         {
@@ -524,9 +549,9 @@ class Program
             var firstName = Console.ReadLine();
             Console.WriteLine("Unesite prezime korisnika: ");
             var lastName = Console.ReadLine();
-            user = users.FirstOrDefault(item => item.firstName == firstName && item.lastName == lastName);
+            user = users.FirstOrDefault(item => item.Item2 == firstName && item.Item3 == lastName);
 
-            if (!user.Equals(default(User)))
+            if (user != null && !user.Equals(default(Tuple<int, string, string, DateTime, List<Tuple<int, decimal, string, List<Dictionary<string, string>>>>>)))
             {
                 validUser = true;
             }
@@ -540,11 +565,13 @@ class Program
         return user;
     }
 
-    static Account AddNewTransaction(Account account)
+    static Tuple<int, decimal, string, List<Dictionary<string, string>>> AddNewTransaction(Tuple<int, decimal, string, List<Dictionary<string, string>>> account)
     {
         var exit = false;
-        var transaction = new Transaction();
-        transaction.Initialize();
+        var transaction = new Dictionary<string, string>();
+        var newAccount = Tuple.Create(0, 0.00m, "", new List<Dictionary<string, string>>());
+        var newBalance = 0.00m;
+        var newDate = DateTime.Now;
 
         do
         {
@@ -563,16 +590,19 @@ class Program
                     break;
                 case 1:
                     transaction = AddTransactionData(transaction);
-                    transaction.date = DateTime.Now;
-                    account.balance = transaction.type == "Income" ? account.balance + transaction.amount : account.balance - transaction.amount;
-                    account.transactions.Add(transaction);
+                    transaction["date"] = DateTime.Now.ToString();
+                    newBalance = transaction["type"] == "Income" ? account.Item2 + decimal.Parse(transaction["amount"]) : account.Item2 - decimal.Parse(transaction["amount"]);
+                    newAccount = Tuple.Create(account.Item1, newBalance, account.Item3, account.Item4);
+                    newAccount.Item4.Add(transaction);
                     break;
                 case 2:
                     transaction = AddTransactionData(transaction);
                     Console.WriteLine("Unesite datum transakcije: ");
-                    DateTime.TryParse(Console.ReadLine(), out transaction.date);
-                    account.balance = transaction.type == "Income" ? account.balance + transaction.amount : account.balance - transaction.amount;
-                    account.transactions.Add(transaction);
+                    DateTime.TryParse(Console.ReadLine(), out var date);
+                    transaction["date"] = date.ToString();
+                    newBalance = transaction["type"] == "Income" ? account.Item2 + decimal.Parse(transaction["amount"]) : account.Item2 - decimal.Parse(transaction["amount"]);
+                    newAccount = Tuple.Create(account.Item1, newBalance, account.Item3, account.Item4);
+                    newAccount.Item4.Add(transaction);
                     break;
                 default:
                     Console.WriteLine("Nepoznata opcija!");
@@ -581,10 +611,10 @@ class Program
             }
         } while (!exit);
 
-        return account;
+        return newAccount;
     }
 
-    static Transaction AddTransactionData(Transaction transaction)
+    static Dictionary<string, string> AddTransactionData(Dictionary<string, string> transaction)
     {
         Console.Clear();
         Console.WriteLine("Unesite tip transakcije:");
@@ -596,10 +626,10 @@ class Program
         switch (option)
         {
             case 1:
-                transaction.type = "Income"; 
+                transaction["type"] = "Income"; 
                 break;
             case 2:
-                transaction.type = "Expense"; 
+                transaction["type"] = "Expense"; 
                 break;
             default:
                 Console.WriteLine("Nepoznati tip!");
@@ -609,7 +639,7 @@ class Program
 
         Console.WriteLine("Unesite kategoriju transakcije:");
 
-        if (transaction.type == "Income")
+        if (transaction["type"] == "Income")
         {
             Console.WriteLine("1. Plaća");
             Console.WriteLine("2. Honorar");
@@ -628,13 +658,13 @@ class Program
         switch (option)
         {
             case 1:
-                transaction.category = transaction.type == "Income" ? "Salary" : "Food";
+                transaction["category"] = transaction["type"] == "Income" ? "Salary" : "Food";
                 break;
             case 2:
-                transaction.category = transaction.type == "Income" ? "Fee" : "Transport";
+                transaction["category"] = transaction["type"] == "Income" ? "Fee" : "Transport";
                 break;
             case 3:
-                transaction.category = transaction.type == "Income" ? "Gift" : "Sport";
+                transaction["category"] = transaction["type"] == "Income" ? "Gift" : "Sport";
                 break;
             default:
                 Console.WriteLine("Nepoznata kategorija!");
@@ -643,15 +673,16 @@ class Program
         }
 
         Console.WriteLine("Unesite opis transakcije:");
-        transaction.description = Console.ReadLine();
+        transaction["description"] = Console.ReadLine();
 
         Console.WriteLine("Unesite iznos transakcije:");
-        decimal.TryParse(Console.ReadLine(), out transaction.amount);
+        decimal.TryParse(Console.ReadLine(), out var amount);
+        transaction["amount"] = amount.ToString();
 
         return transaction;
     }
 
-    static Account DeleteTransaction(Account account)
+    static Tuple<int, decimal, string, List<Dictionary<string, string>>> DeleteTransaction(Tuple<int, decimal, string, List<Dictionary<string, string>>> account)
     {
         var exit = false;
 
@@ -696,19 +727,19 @@ class Program
         return account;
     }
 
-    static Account DeleteTransactionById(Account account)
+    static Tuple<int, decimal, string, List<Dictionary<string, string>>> DeleteTransactionById(Tuple<int, decimal, string, List<Dictionary<string, string>>> account)
     {
         var validTransaction = false;
-        var transaction = new Transaction();
+        var transaction = new Dictionary<string, string>();
 
         do
         {
             Console.Clear();
             Console.WriteLine("Unesite ID transakcije: ");
-            int.TryParse(Console.ReadLine(), out var id);
-            transaction = account.transactions.FirstOrDefault(item => item.id == id);
+            var id = Console.ReadLine();
+            transaction = account.Item4.FirstOrDefault(item => item["id"] == id);
 
-            if (!transaction.Equals(default(Transaction)))
+            if (!transaction.Equals(default(Dictionary<string, string>)))
             {
                 validTransaction = true;
             }
@@ -719,12 +750,12 @@ class Program
             }
         } while (!validTransaction);
 
-        account.transactions.Remove(transaction);
+        account.Item4.Remove(transaction);
 
         return account;
     }
 
-    static Account DeleteTransactionsBelowAmount(Account account)
+    static Tuple<int, decimal, string, List<Dictionary<string, string>>> DeleteTransactionsBelowAmount(Tuple<int, decimal, string, List<Dictionary<string, string>>> account)
     {
         var amount = 0.00m;
 
@@ -741,10 +772,10 @@ class Program
             }
         } while (amount < 0.00m);
 
-        foreach (var item in account.transactions.ToList())
+        foreach (var item in account.Item4.ToList())
         {
-            if (item.amount < amount)
-                account.transactions.Remove(item);
+            if (decimal.Parse(item["amount"]) < amount)
+                account.Item4.Remove(item);
         }
 
         Console.WriteLine("Uspješni izbrisane transakcije");
@@ -753,7 +784,7 @@ class Program
         return account;
     }
 
-    static Account DeleteTransactionsAboveAmount(Account account)
+    static Tuple<int, decimal, string, List<Dictionary<string, string>>> DeleteTransactionsAboveAmount(Tuple<int, decimal, string, List<Dictionary<string, string>>> account)
     {
         var amount = 0.00m;
 
@@ -770,10 +801,10 @@ class Program
             }
         } while (amount < 0.00m);
 
-        foreach (var item in account.transactions.ToList())
+        foreach (var item in account.Item4.ToList())
         {
-            if (item.amount > amount)
-                account.transactions.Remove(item);
+            if (decimal.Parse(item["amount"]) > amount)
+                account.Item4.Remove(item);
         }
 
         Console.WriteLine("Uspješno izbrisane transakcije");
