@@ -71,6 +71,7 @@ class Program
 {
     static List<User> users = new List<User>();
     static int lastUserId = 0;
+    static int lastTransactionId = 0;
 
     static void Main()
     {
@@ -168,6 +169,7 @@ class Program
     static User TransactionsManagement(User user, int accountIndex)
     {
         var exit = false;
+        var account = new Account();
 
         do
         {
@@ -177,10 +179,12 @@ class Program
             switch (option)
             {
                 case 1:
-                    var account = AddNewTransaction(user.accounts[accountIndex]);
+                    account = AddNewTransaction(user.accounts[accountIndex]);
                     user.accounts[accountIndex] = account;
                     break;
                 case 2:
+                    account = DeleteTransaction(user.accounts[accountIndex]);
+                    user.accounts[accountIndex] = account;
                     break;
                 case 3:
                     break;
@@ -645,6 +649,137 @@ class Program
         decimal.TryParse(Console.ReadLine(), out transaction.amount);
 
         return transaction;
+    }
+
+    static Account DeleteTransaction(Account account)
+    {
+        var exit = false;
+
+        do
+        {
+            Console.Clear();
+            Console.WriteLine("Brisanje transakcije: ");
+            Console.WriteLine("1. Po ID-u");
+            Console.WriteLine("2. Ispod unesenog iznosa");
+            Console.WriteLine("3. Iznad unesenog iznosa");
+            Console.WriteLine("4. Sve prihode");
+            Console.WriteLine("5. Sve rashode");
+            Console.WriteLine("6. Po kategoriji");
+            Console.WriteLine("0. Natrag");
+            int.TryParse(Console.ReadLine(), out var option);
+
+            switch (option)
+            {
+                case 0:
+                    exit = true;
+                    break;
+                case 1:
+                    account = DeleteTransactionById(account);
+                    break;
+                case 2:
+                    account = DeleteTransactionsBelowAmount(account);
+                    break;
+                case 3:
+                    account = DeleteTransactionsAboveAmount(account);
+                    break;
+                case 4:
+                    break;
+                case 5:
+                    break;
+                case 6:
+                    break;
+                default:
+                    break;
+            }
+        } while (!exit);
+
+        return account;
+    }
+
+    static Account DeleteTransactionById(Account account)
+    {
+        var validTransaction = false;
+        var transaction = new Transaction();
+
+        do
+        {
+            Console.Clear();
+            Console.WriteLine("Unesite ID transakcije: ");
+            int.TryParse(Console.ReadLine(), out var id);
+            transaction = account.transactions.FirstOrDefault(item => item.id == id);
+
+            if (!transaction.Equals(default(Transaction)))
+            {
+                validTransaction = true;
+            }
+            else
+            {
+                Console.WriteLine("Transakcija nije pronađena!");
+                Console.ReadLine();
+            }
+        } while (!validTransaction);
+
+        account.transactions.Remove(transaction);
+
+        return account;
+    }
+
+    static Account DeleteTransactionsBelowAmount(Account account)
+    {
+        var amount = 0.00m;
+
+        do
+        {
+            Console.Clear();
+            Console.WriteLine("Unesite maksimalan iznos transakcije: ");
+
+            if (!decimal.TryParse(Console.ReadLine(), out amount) || amount < 0.00m)
+            {
+                Console.WriteLine("Krivo unesen iznos!");
+                Console.ReadLine();
+                continue;
+            }
+        } while (amount < 0.00m);
+
+        foreach (var item in account.transactions.ToList())
+        {
+            if (item.amount < amount)
+                account.transactions.Remove(item);
+        }
+
+        Console.WriteLine("Uspješni izbrisane transakcije");
+        Console.ReadLine();
+
+        return account;
+    }
+
+    static Account DeleteTransactionsAboveAmount(Account account)
+    {
+        var amount = 0.00m;
+
+        do
+        {
+            Console.Clear();
+            Console.WriteLine("Unesite minimalan iznos transakcije: ");
+
+            if (!decimal.TryParse(Console.ReadLine(), out amount) || amount < 0.00m)
+            {
+                Console.WriteLine("Krivo unesen iznos!");
+                Console.ReadLine();
+                continue;
+            }
+        } while (amount < 0.00m);
+
+        foreach (var item in account.transactions.ToList())
+        {
+            if (item.amount > amount)
+                account.transactions.Remove(item);
+        }
+
+        Console.WriteLine("Uspješno izbrisane transakcije");
+        Console.ReadLine();
+
+        return account;
     }
 }
 
