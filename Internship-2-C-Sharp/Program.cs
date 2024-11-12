@@ -1,4 +1,5 @@
-﻿using System.Reflection;
+﻿using System;
+using System.Reflection;
 using System.Security.Principal;
 
 class Program
@@ -19,7 +20,12 @@ class Program
         do
         {
             DisplayMainMenu();
-            int.TryParse(Console.ReadLine(), out var option);
+            if(!int.TryParse(Console.ReadLine(), out var option))
+            {
+                Console.WriteLine("Nepoznata opcija!");
+                Console.ReadLine();
+                continue;
+            }
 
             switch (option)
             {
@@ -45,26 +51,26 @@ class Program
     {
         var transaction1 = new Dictionary<string, string>() {
             {"id", "0"},
-            {"amount", "0.00" },
+            {"amount", "1000.00" },
             {"description", "Standardna transakcija"},
-            {"type", "Prihod"},
-            {"category", "Plaća"},
+            {"type", "Income"},
+            {"category", "Salary"},
             {"date", "2000-11-11"},
         };
         var transaction2 = new Dictionary<string, string>() {
             {"id", "1"},
-            {"amount", "0.00" },
+            {"amount", "10.00" },
             {"description", "Standardna transakcija"},
-            {"type", "Prihod"},
-            {"category", "Plaća"},
+            {"type", "Expense"},
+            {"category", "Food"},
             {"date", "2000-11-11"},
         };
         var transaction3 = new Dictionary<string, string>() {
             {"id", "2"},
-            {"amount", "0.00" },
+            {"amount", "50.00" },
             {"description", "Standardna transakcija"},
-            {"type", "Prihod"},
-            {"category", "Plaća"},
+            {"type", "Income"},
+            {"category", "Gift"},
             {"date", "2000-11-11"},
         };
 
@@ -73,21 +79,21 @@ class Program
         currentAccountTransactions.Add(transaction2);
         currentAccountTransactions.Add(transaction3);
 
-        var currentAccount = Tuple.Create(0, 100.00m, "Prihod", currentAccountTransactions);
+        var currentAccount = Tuple.Create(0, 100.00m, "Current", currentAccountTransactions);
 
         var giroAccountTransactions = new List<Dictionary<string, string>>();
         giroAccountTransactions.Add(transaction1);
         giroAccountTransactions.Add(transaction2);
         giroAccountTransactions.Add(transaction3);
 
-        var giroAccount = Tuple.Create(0, 100.00m, "Prihod", giroAccountTransactions);
+        var giroAccount = Tuple.Create(0, 0.00m, "Giro", giroAccountTransactions);
 
         var prepaidAccountTransactions = new List<Dictionary<string, string>>();
         prepaidAccountTransactions.Add(transaction1);
         prepaidAccountTransactions.Add(transaction2);
         prepaidAccountTransactions.Add(transaction3);
 
-        var prepaidAccount = Tuple.Create(0, 100.00m, "Prihod", prepaidAccountTransactions);
+        var prepaidAccount = Tuple.Create(0, 0.00m, "Prepaid", prepaidAccountTransactions);
 
         var accounts = new List<Tuple<int, decimal, string, List<Dictionary<string, string>>>>();
         accounts.Add(currentAccount);
@@ -106,7 +112,12 @@ class Program
         do
         {
             DisplayUsersMenu();
-            int.TryParse(Console.ReadLine(), out var option);
+            if (!int.TryParse(Console.ReadLine(), out var option))
+            {
+                Console.WriteLine("Nepoznata opcija!");
+                Console.ReadLine();
+                continue;
+            }
 
             switch (option)
             {
@@ -142,7 +153,12 @@ class Program
         do
         {
             DisplayAccounts(user);
-            int.TryParse(Console.ReadLine(), out var account);
+            if (!int.TryParse(Console.ReadLine(), out var account))
+            {
+                Console.WriteLine("Nepoznata opcija!");
+                Console.ReadLine();
+                continue;
+            }
 
             switch (account)
             {
@@ -171,7 +187,12 @@ class Program
         do
         {
             DisplayTransactionsMenu();
-            int.TryParse(Console.ReadLine(), out var option);
+            if (!int.TryParse(Console.ReadLine(), out var option))
+            {
+                Console.WriteLine("Nepoznata opcija!");
+                Console.ReadLine();
+                continue;
+            }
 
             switch (option)
             {
@@ -303,9 +324,9 @@ class Program
         var accounts = user.Item5;
 
         Console.Clear();
-        Console.WriteLine($"1. Tekući račun, Iznos: {accounts[0].Item2} €");
-        Console.WriteLine($"2. Žiro račun, Iznos: {accounts[1].Item2} €");
-        Console.WriteLine($"3. Web prepaid račun, Iznos: {accounts[2].Item2} €");
+        Console.WriteLine($"1. Tekući račun, Iznos: {accounts[0].Item2} EUR");
+        Console.WriteLine($"2. Žiro račun, Iznos: {accounts[1].Item2} EUR");
+        Console.WriteLine($"3. Web prepaid račun, Iznos: {accounts[2].Item2} EUR");
         Console.WriteLine("0. Natrag");
         Console.Write("Tvoj odabir: ");
     }
@@ -334,7 +355,7 @@ class Program
             var lastName = Console.ReadLine();
             Console.Write("Unesite datum rodenja (YYYY-MM-DD): ");
 
-            if (DateTime.TryParse(Console.ReadLine(), out var date) && firstName != null && lastName != null)
+            if (DateTime.TryParse(Console.ReadLine(), out var date) && firstName != string.Empty && lastName != string.Empty)
             {
                 var user = GenerateDefaultUser(firstName, lastName, date);
                 users.Add(user);
@@ -370,7 +391,7 @@ class Program
                     exit = true;
                     break;
                 case 1:
-                    var id = InputUserId();
+                    var id = InputId();
                     user = FindUserById(id);
                     users.Remove(user);
                     Console.WriteLine("Korisnik uspješno izbrisan!");
@@ -393,7 +414,7 @@ class Program
 
     static void EditUser()
     {
-        var id = InputUserId();
+        var id = InputId();
         var user = FindUserById(id);
         var newUser = GenerateDefaultUser("", "", DateTime.Now);
         var userIndex = users.FindIndex(item => item.Item1 == user.Item1);
@@ -468,7 +489,12 @@ class Program
         do
         {
             DisplaySortedUsersMenu();
-            int.TryParse(Console.ReadLine(), out var filter);
+            if (!int.TryParse(Console.ReadLine(), out var filter))
+            {
+                Console.WriteLine("Nepoznata opcija!");
+                Console.ReadLine();
+                continue;
+            }
             Console.Clear();
 
             switch (filter)
@@ -499,14 +525,14 @@ class Program
         } while (!exit);
     }
 
-    static int InputUserId()
+    static int InputId()
     {
         var id = 0;
 
         do
         {
             Console.Clear();
-            Console.WriteLine("Unesite ID korisnika: ");
+            Console.WriteLine("Unesite ID: ");
             if (int.TryParse(Console.ReadLine(), out id))
                 break;
         } while (true);
@@ -581,7 +607,13 @@ class Program
             Console.WriteLine("2. Ranije izvršena transakcija");
             Console.WriteLine("0. Natrag");
             Console.WriteLine("Tvoj odabir:");
-            int.TryParse(Console.ReadLine(), out var option);
+
+            if (!int.TryParse(Console.ReadLine(), out var option))
+            {
+                Console.WriteLine("Nepoznata opcija!");
+                Console.ReadLine();
+                continue;
+            }
 
             switch (option)
             {
@@ -593,16 +625,34 @@ class Program
                     transaction["date"] = DateTime.Now.ToString();
                     newBalance = transaction["type"] == "Income" ? account.Item2 + decimal.Parse(transaction["amount"]) : account.Item2 - decimal.Parse(transaction["amount"]);
                     newAccount = Tuple.Create(account.Item1, newBalance, account.Item3, account.Item4);
-                    newAccount.Item4.Add(transaction);
+                    account = newAccount;
+                    account.Item4.Add(transaction);
+                    Console.WriteLine("Uspjesno dodana transakcija");
+                    Console.ReadLine();
                     break;
                 case 2:
                     transaction = AddTransactionData(transaction);
-                    Console.WriteLine("Unesite datum transakcije: ");
-                    DateTime.TryParse(Console.ReadLine(), out var date);
-                    transaction["date"] = date.ToString();
+
+                    do
+                    {
+                        Console.Clear();
+                        Console.WriteLine("Unesite datum transakcije: ");
+                        if (!DateTime.TryParse(Console.ReadLine(), out var date)){
+                            Console.WriteLine("Krivo unesen datum!");
+                            Console.ReadLine();
+                            continue;
+                        }
+
+                        transaction["date"] = date.ToString();
+                        break;
+                    } while (true);
+
                     newBalance = transaction["type"] == "Income" ? account.Item2 + decimal.Parse(transaction["amount"]) : account.Item2 - decimal.Parse(transaction["amount"]);
                     newAccount = Tuple.Create(account.Item1, newBalance, account.Item3, account.Item4);
-                    newAccount.Item4.Add(transaction);
+                    account = newAccount;
+                    account.Item4.Add(transaction);
+                    Console.WriteLine("Uspjesno dodana transakcija");
+                    Console.ReadLine();
                     break;
                 default:
                     Console.WriteLine("Nepoznata opcija!");
@@ -616,68 +666,109 @@ class Program
 
     static Dictionary<string, string> AddTransactionData(Dictionary<string, string> transaction)
     {
-        Console.Clear();
-        Console.WriteLine("Unesite tip transakcije:");
-        Console.WriteLine("1. Prihod");
-        Console.WriteLine("2. Rashod");
-        Console.WriteLine("Tvoj odabir:");
-        int.TryParse(Console.ReadLine(), out var option);
+        var option = 0;
 
-        switch (option)
+        do
         {
-            case 1:
-                transaction["type"] = "Income"; 
-                break;
-            case 2:
-                transaction["type"] = "Expense"; 
-                break;
-            default:
-                Console.WriteLine("Nepoznati tip!");
+            Console.Clear();
+            Console.WriteLine("Unesite tip transakcije:");
+            Console.WriteLine("1. Prihod");
+            Console.WriteLine("2. Rashod");
+            Console.WriteLine("Tvoj odabir:");
+            if (!int.TryParse(Console.ReadLine(), out option))
+            {
+                Console.WriteLine("Nepoznata opcija!");
                 Console.ReadLine();
-                break;
-        }
+                continue;
+            }
 
-        Console.WriteLine("Unesite kategoriju transakcije:");
+            switch (option)
+            {
+                case 1:
+                    transaction["type"] = "Income";
+                    break;
+                case 2:
+                    transaction["type"] = "Expense";
+                    break;
+                default:
+                    Console.WriteLine("Nepoznati tip!");
+                    Console.ReadLine();
+                    break;
+            }
+        } while (option != 1 && option != 2);
 
-        if (transaction["type"] == "Income")
+        do
         {
-            Console.WriteLine("1. Plaća");
-            Console.WriteLine("2. Honorar");
-            Console.WriteLine("3. Poklon");
-        }
-        else
-        {
-            Console.WriteLine("1. Hrana");
-            Console.WriteLine("2. Prijevoz");
-            Console.WriteLine("3. Sport");
-        }
+            Console.Clear();
+            Console.WriteLine("Unesite kategoriju transakcije:");
 
-        Console.WriteLine("Tvoj odabir:");
-        int.TryParse(Console.ReadLine(), out option);
+            if (transaction["type"] == "Income")
+            {
+                Console.WriteLine("1. Plaća");
+                Console.WriteLine("2. Honorar");
+                Console.WriteLine("3. Poklon");
+            }
+            else
+            {
+                Console.WriteLine("1. Hrana");
+                Console.WriteLine("2. Prijevoz");
+                Console.WriteLine("3. Sport");
+            }
 
-        switch (option)
-        {
-            case 1:
-                transaction["category"] = transaction["type"] == "Income" ? "Salary" : "Food";
-                break;
-            case 2:
-                transaction["category"] = transaction["type"] == "Income" ? "Fee" : "Transport";
-                break;
-            case 3:
-                transaction["category"] = transaction["type"] == "Income" ? "Gift" : "Sport";
-                break;
-            default:
-                Console.WriteLine("Nepoznata kategorija!");
+            Console.WriteLine("Tvoj odabir:");
+            if (!int.TryParse(Console.ReadLine(), out option))
+            {
+                Console.WriteLine("Nepoznata opcija!");
                 Console.ReadLine();
-                break;
-        }
+                continue;
+            }
 
-        Console.WriteLine("Unesite opis transakcije:");
-        transaction["description"] = Console.ReadLine();
+            switch (option)
+            {
+                case 1:
+                    transaction["category"] = transaction["type"] == "Income" ? "Salary" : "Food";
+                    break;
+                case 2:
+                    transaction["category"] = transaction["type"] == "Income" ? "Fee" : "Transport";
+                    break;
+                case 3:
+                    transaction["category"] = transaction["type"] == "Income" ? "Gift" : "Sport";
+                    break;
+                default:
+                    Console.WriteLine("Nepoznata kategorija!");
+                    Console.ReadLine();
+                    break;
+            }
+        } while (option < 1 || option > 3);
 
-        Console.WriteLine("Unesite iznos transakcije:");
-        decimal.TryParse(Console.ReadLine(), out var amount);
-        transaction["amount"] = amount.ToString();
+        do
+        {
+            Console.Clear();
+            Console.WriteLine("Unesite opis transakcije:");
+            transaction["description"] = Console.ReadLine();
+
+            if (transaction["description"] == string.Empty)
+            {
+                Console.WriteLine("Niste unijeli opis!");
+                Console.ReadLine();
+            }
+        } while (transaction["description"] == string.Empty);
+
+        var amount = 0.00m;
+
+        do
+        {
+            Console.Clear();
+            Console.WriteLine("Unesite iznos transakcije:");
+            if (!decimal.TryParse(Console.ReadLine(), out amount) || amount <= 0.00m)
+            {
+                Console.WriteLine("Pogrešno unesen iznos!");
+                Console.ReadLine();
+                continue;
+            }
+
+            transaction["amount"] = amount.ToString();
+        } while (amount <= 0.00m);
 
         return transaction;
     }
@@ -697,7 +788,14 @@ class Program
             Console.WriteLine("5. Sve rashode");
             Console.WriteLine("6. Po kategoriji");
             Console.WriteLine("0. Natrag");
-            int.TryParse(Console.ReadLine(), out var option);
+            Console.WriteLine("Tvoj odabir: ");
+
+            if (!int.TryParse(Console.ReadLine(), out var option))
+            {
+                Console.WriteLine("Nepoznata opcija!");
+                Console.ReadLine();
+                continue;
+            }
 
             switch (option)
             {
@@ -714,12 +812,17 @@ class Program
                     account = DeleteTransactionsAboveAmount(account);
                     break;
                 case 4:
+                    account = DeleteIncomeTransactions(account);
                     break;
                 case 5:
+                    account = DeleteExpenseTransactions(account);
                     break;
                 case 6:
+                    account = DeleteTransactionsByCategory(account);
                     break;
                 default:
+                    Console.WriteLine("Nepoznata opcija!");
+                    Console.ReadLine();
                     break;
             }
         } while (!exit);
@@ -734,12 +837,10 @@ class Program
 
         do
         {
-            Console.Clear();
-            Console.WriteLine("Unesite ID transakcije: ");
-            var id = Console.ReadLine();
-            transaction = account.Item4.FirstOrDefault(item => item["id"] == id);
+            var id = InputId();
+            transaction = account.Item4.FirstOrDefault(item => item["id"] == id.ToString());
 
-            if (!transaction.Equals(default(Dictionary<string, string>)))
+            if (transaction != null && !transaction.Equals(default(Dictionary<string, string>)))
             {
                 validTransaction = true;
             }
@@ -768,9 +869,8 @@ class Program
             {
                 Console.WriteLine("Krivo unesen iznos!");
                 Console.ReadLine();
-                continue;
             }
-        } while (amount < 0.00m);
+        } while (amount <= 0.00m);
 
         foreach (var item in account.Item4.ToList())
         {
@@ -778,7 +878,7 @@ class Program
                 account.Item4.Remove(item);
         }
 
-        Console.WriteLine("Uspješni izbrisane transakcije");
+        Console.WriteLine("Uspješno izbrisane transakcije");
         Console.ReadLine();
 
         return account;
@@ -797,9 +897,8 @@ class Program
             {
                 Console.WriteLine("Krivo unesen iznos!");
                 Console.ReadLine();
-                continue;
             }
-        } while (amount < 0.00m);
+        } while (amount <= 0.00m);
 
         foreach (var item in account.Item4.ToList())
         {
@@ -808,6 +907,73 @@ class Program
         }
 
         Console.WriteLine("Uspješno izbrisane transakcije");
+        Console.ReadLine();
+
+        return account;
+    }
+
+    static Tuple<int, decimal, string, List<Dictionary<string, string>>> DeleteIncomeTransactions (Tuple<int, decimal, string, List<Dictionary<string, string>>> account)
+    {
+        foreach (var item in account.Item4.ToList())
+        {
+            if (item["type"] == "Income")
+                account.Item4.Remove(item);
+        }
+
+        Console.WriteLine("Uspjesno izbrisane transakcije!");
+        Console.ReadLine();
+
+        return account;
+    }
+
+    static Tuple<int, decimal, string, List<Dictionary<string, string>>> DeleteExpenseTransactions(Tuple<int, decimal, string, List<Dictionary<string, string>>> account)
+    {
+        foreach (var item in account.Item4.ToList())
+        {
+            if (item["type"] == "Expense")
+                account.Item4.Remove(item);
+        }
+
+        Console.WriteLine("Uspjesno izbrisane transakcije!");
+        Console.ReadLine();
+
+        return account;
+    }
+
+    static Tuple<int, decimal, string, List<Dictionary<string, string>>> DeleteTransactionsByCategory(Tuple<int, decimal, string, List<Dictionary<string, string>>> account)
+    {
+        do
+        {
+            Console.Clear();
+            Console.WriteLine("Unesite kategoriju transakcije:");
+            Console.WriteLine("Salary");
+            Console.WriteLine("Fee");
+            Console.WriteLine("Gift");
+            Console.WriteLine("Food");
+            Console.WriteLine("Transport");
+            Console.WriteLine("Sport");
+            Console.WriteLine("Tvoj odabir:");
+            var option = Console.ReadLine();
+
+            if(option != "Salary" && option != "Fee" && option != "Gift" && option != "Food" && option != "Transport" && option != "Sport")
+            {
+                Console.WriteLine("Nepoznata kategorija!");
+                Console.ReadLine();
+            }
+            else
+            {
+                foreach (var item in account.Item4.ToList())
+                {
+                    if (item["category"] == option)
+                        account.Item4.Remove(item);
+                }
+
+                break;
+            }
+
+        } while (true);
+
+        Console.WriteLine("Uspjesno izbrisane transakcije!");
         Console.ReadLine();
 
         return account;
