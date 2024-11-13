@@ -668,7 +668,6 @@ class Program
                         break;
                     }
                     newUser = Tuple.Create(user.Item1, firstName, user.Item3, user.Item4, user.Item5);
-                    Console.WriteLine($"{userIndex}");
                     users[userIndex] = newUser;
                     Console.WriteLine("Uspješna izmjena!");
                     Console.ReadLine();
@@ -971,7 +970,7 @@ class Program
 
         if (transaction == null || transaction.Equals(default(List<Dictionary<string, string>>)))
         {
-            Console.WriteLine("Korisnik nije pronađen!");
+            Console.WriteLine("Transakcija nije pronađena!");
             Console.ReadLine();
             return null;
         }
