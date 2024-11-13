@@ -1,7 +1,12 @@
-﻿using Microsoft.VisualBasic.FileIO;
+﻿using Microsoft.VisualBasic;
+using Microsoft.VisualBasic.FileIO;
 using System;
+using System.Collections.Generic;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Security.Principal;
+using System.Transactions;
+using static System.Net.Mime.MediaTypeNames;
 
 class Program
 {
@@ -80,21 +85,35 @@ class Program
         currentAccountTransactions.Add(transaction2);
         currentAccountTransactions.Add(transaction3);
 
-        var currentAccount = Tuple.Create(0, 100.00m, "Current", currentAccountTransactions);
+        var balance = 0.00m;
+        if (transaction1["type"] == "Income")
+            balance += decimal.Parse(transaction1["amount"]);
+        else
+            balance -= decimal.Parse(transaction1["amount"]);
+        if (transaction2["type"] == "Income")
+            balance += decimal.Parse(transaction2["amount"]);
+        else
+            balance -= decimal.Parse(transaction2["amount"]);
+        if (transaction3["type"] == "Income")
+            balance += decimal.Parse(transaction3["amount"]);
+        else
+            balance -= decimal.Parse(transaction3["amount"]);
+
+        var currentAccount = Tuple.Create(0, 100.00m + balance, "Current", currentAccountTransactions);
 
         var giroAccountTransactions = new List<Dictionary<string, string>>();
         giroAccountTransactions.Add(transaction1);
         giroAccountTransactions.Add(transaction2);
         giroAccountTransactions.Add(transaction3);
 
-        var giroAccount = Tuple.Create(0, 0.00m, "Giro", giroAccountTransactions);
+        var giroAccount = Tuple.Create(0, 0.00m + balance, "Giro", giroAccountTransactions);
 
         var prepaidAccountTransactions = new List<Dictionary<string, string>>();
         prepaidAccountTransactions.Add(transaction1);
         prepaidAccountTransactions.Add(transaction2);
         prepaidAccountTransactions.Add(transaction3);
 
-        var prepaidAccount = Tuple.Create(0, 0.00m, "Prepaid", prepaidAccountTransactions);
+        var prepaidAccount = Tuple.Create(0, 0.00m + balance, "Prepaid", prepaidAccountTransactions);
 
         var accounts = new List<Tuple<int, decimal, string, List<Dictionary<string, string>>>>();
         accounts.Add(currentAccount);
@@ -210,9 +229,10 @@ class Program
                     user.Item5[accountIndex] = account;
                     break;
                 case 4:
-                    DisplayTransactions(user.Item5[accountIndex]);
+                    ShowTransactions(user.Item5[accountIndex]);
                     break;
                 case 5:
+                    FinancialReport(user.Item5[accountIndex]);
                     break;
                 case 0:
                     exit = true;
@@ -334,17 +354,190 @@ class Program
         Console.Write("Tvoj odabir: ");
     }
 
-    static void DisplayTransactions(Tuple<int, decimal, string, List<Dictionary<string, string>>> account)
+    static void DisplayTransactions(List<Dictionary<string, string>> transactions)
     {
         Console.Clear();
         Console.WriteLine("Transakcije");
 
-        foreach(var transaction in account.Item4)
+        foreach(var transaction in transactions)
         {
             Console.WriteLine($"{transaction["type"]} - {transaction["amount"]} - {transaction["description"]} - {transaction["category"]} - {transaction["date"]}");
         }
 
         Console.ReadLine();
+    }
+
+    static void DisplayTransactionsSortedByAmount(List<Dictionary<string, string>> transactions)
+    {
+        var sortedTransactions = transactions.OrderBy(item => decimal.Parse(item["amount"])).ToList();
+        DisplayTransactions(sortedTransactions);
+    }
+
+    static void DisplaySumOfTransactionsByDate(List<Dictionary<string, string>> transactions)
+    {
+        var year = 0;
+        var month = 0;
+        var filteredTransactions = new List<Dictionary<string, string>>();
+        var income = 0.00m;
+        var expense = 0.00m;
+
+        do
+        {
+            Console.Clear();
+            Console.WriteLine("Unesite godinu:");
+            if (!int.TryParse(Console.ReadLine(), out year) || year < 1)
+            {
+                Console.WriteLine("Krivo unesena godina!");
+                Console.ReadLine();
+                continue;
+            }
+
+            Console.WriteLine("Unesite mjesec:");
+            if (!int.TryParse(Console.ReadLine(), out month) || month < 1 || month > 12)
+            {
+                Console.WriteLine("Krivo unesen mjesec!");
+                Console.ReadLine();
+            }
+        } while (year < 1 || month < 1 || month > 12);
+
+        foreach (var transaction in transactions)
+        {
+            var transactionYear = DateTime.Parse(transaction["date"]).Year;
+            var transactionMonth = DateTime.Parse(transaction["date"]).Month;
+            if (transactionYear == year && transactionMonth == month)
+            {
+                if (transaction["type"] == "Income")
+                    income += decimal.Parse(transaction["amount"]);
+                else
+                    expense += decimal.Parse(transaction["amount"]);
+
+                filteredTransactions.Add(transaction);
+            }
+        }
+
+        DisplayTransactions(filteredTransactions);
+
+        Console.WriteLine($"Prihodi: {income}");
+        Console.WriteLine($"Rashodi: {expense}");
+        Console.ReadLine();
+    }
+
+    static void DisplayExpensePercentageByCategory(List<Dictionary<string, string>> transactions)
+    {
+        var filteredTransactions = new List<Dictionary<string, string>>();
+        var category = InputTransactionCategory("Expense");
+        var expenseAmount = 0.00m;
+        var categoryAmount = 0.00m;
+
+        foreach (var transaction in transactions)
+        {
+            if (transaction["type"] == "Expense")
+                expenseAmount += decimal.Parse(transaction["amount"]);
+
+            if (transaction["category"] == category)
+            {
+                categoryAmount += decimal.Parse(transaction["amount"]);
+                filteredTransactions.Add(transaction);
+            }
+        }
+
+        DisplayTransactions(filteredTransactions);
+
+        if (filteredTransactions.Count > 0) 
+        {
+            Console.Clear();
+            Console.WriteLine($"Udio kategorije {category} je {((categoryAmount / expenseAmount) * 100.00m).ToString("F2")} %");
+            Console.ReadLine();
+        }
+        else
+        {
+            Console.Clear();
+            Console.WriteLine($"Nema troškova za kategoriju {category}");
+            Console.ReadLine();
+        }
+    }
+
+    static void DisplayAverageAmountTransactionsByDate(List<Dictionary<string, string>> transactions)
+    {
+        var year = 0;
+        var month = 0;
+        var filteredTransactions = new List<Dictionary<string, string>>();
+        var amount = 0.00m;
+
+        do {
+            Console.Clear();
+            Console.WriteLine("Unesite godinu:");
+            if (!int.TryParse(Console.ReadLine(), out year) || year < 1)
+            {
+                Console.WriteLine("Krivo unesena godina!");
+                Console.ReadLine();
+                continue;
+            }
+
+            Console.WriteLine("Unesite mjesec:");
+            if (!int.TryParse(Console.ReadLine(), out month) || month < 1 || month > 12)
+            {
+                Console.WriteLine("Krivo unesen mjesec!");
+                Console.ReadLine();
+            }
+        } while (year < 1 || month < 1 || month > 12) ;
+
+        foreach (var transaction in transactions)
+        {
+            var transactionYear = DateTime.Parse(transaction["date"]).Year;
+            var transactionMonth = DateTime.Parse(transaction["date"]).Month;
+            if (transactionYear == year && transactionMonth == month)
+            {
+                filteredTransactions.Add(transaction);
+                amount += decimal.Parse(transaction["amount"]);
+            }
+        }
+
+        DisplayTransactions(filteredTransactions);
+
+        if (filteredTransactions.Count > 0)
+        {
+            Console.Clear();
+            Console.WriteLine($"Prosjecan iznos transakcije u godini: {year} i mjesecu: {month} je {(amount / filteredTransactions.Count).ToString("F2")}");
+            Console.ReadLine();
+        }
+        else
+        {
+            Console.Clear();
+            Console.WriteLine("Nema transakcija za taj period!");
+            Console.ReadLine();
+        }
+    }
+
+    static void DisplayAverageAmountTransactionsByCategory(List<Dictionary<string, string>> transactions)
+    {
+        var filteredTransactions = new List<Dictionary<string, string>>();
+        var category = InputTransactionCategory(InputTransactionType());
+        var categoryAmount = 0.00m;
+
+        foreach (var transaction in transactions)
+        {
+            if (transaction["category"] == category)
+            {
+                categoryAmount += decimal.Parse(transaction["amount"]);
+                filteredTransactions.Add(transaction);
+            }
+        }
+
+        DisplayTransactions(filteredTransactions);
+
+        if (filteredTransactions.Count > 0)
+        {
+            Console.Clear();
+            Console.WriteLine($"Prosjecan iznos transakcije kategorije {category} je {categoryAmount / filteredTransactions.Count}");
+            Console.ReadLine();
+        }
+        else
+        {
+            Console.Clear();
+            Console.WriteLine($"Nema transakcija za kategoriju {category}");
+            Console.ReadLine();
+        }
     }
 
     static void AddUser()
@@ -828,6 +1021,9 @@ class Program
                 case 2:
                     transaction = AddTransactionData(transaction);
                     transaction["date"] = InputDate().ToString();
+                    newBalance = transaction["type"] == "Income" ? account.Item2 + decimal.Parse(transaction["amount"]) : account.Item2 - decimal.Parse(transaction["amount"]);
+                    newAccount = Tuple.Create(account.Item1, newBalance, account.Item3, account.Item4);
+                    account = newAccount;
                     account.Item4.Add(transaction);
                     Console.WriteLine("Uspjesno dodana transakcija");
                     Console.ReadLine();
@@ -933,12 +1129,23 @@ class Program
 
         account.Item4.Remove(transaction);
 
+        var newAccount = Tuple.Create(account.Item1, 
+                                      transaction["type"] == "Income" ? account.Item2 - decimal.Parse(transaction["amount"]) : account.Item2 + decimal.Parse(transaction["amount"]), 
+                                      account.Item3, 
+                                      account.Item4);
+        account = newAccount;
+
+        Console.WriteLine("Uspjesno izbrisana transakcija!");
+        Console.ReadLine();
+
         return account;
     }
 
     static Tuple<int, decimal, string, List<Dictionary<string, string>>> DeleteTransactionsBelowAmount(Tuple<int, decimal, string, List<Dictionary<string, string>>> account)
     {
         var amount = 0.00m;
+        var newAccount = Tuple.Create(0, 0.00m, "", new List<Dictionary<string, string>>());
+        var balance = account.Item2;
 
         do
         {
@@ -955,8 +1162,18 @@ class Program
         foreach (var item in account.Item4.ToList())
         {
             if (decimal.Parse(item["amount"]) < amount)
+            {
                 account.Item4.Remove(item);
+                balance = item["type"] == "Income" ? balance - decimal.Parse(item["amount"]) : balance + decimal.Parse(item["amount"]);
+                newAccount = Tuple.Create(account.Item1,
+                                      balance,
+                                      account.Item3,
+                                      account.Item4);
+                account = newAccount;
+            }
         }
+
+        
 
         Console.WriteLine("Uspješno izbrisane transakcije");
         Console.ReadLine();
@@ -967,6 +1184,8 @@ class Program
     static Tuple<int, decimal, string, List<Dictionary<string, string>>> DeleteTransactionsAboveAmount(Tuple<int, decimal, string, List<Dictionary<string, string>>> account)
     {
         var amount = 0.00m;
+        var newAccount = Tuple.Create(0, 0.00m, "", new List<Dictionary<string, string>>());
+        var balance = account.Item2;
 
         do
         {
@@ -983,7 +1202,15 @@ class Program
         foreach (var item in account.Item4.ToList())
         {
             if (decimal.Parse(item["amount"]) > amount)
+            {
                 account.Item4.Remove(item);
+                balance = item["type"] == "Income" ? balance - decimal.Parse(item["amount"]) : balance + decimal.Parse(item["amount"]);
+                newAccount = Tuple.Create(account.Item1,
+                                      balance,
+                                      account.Item3,
+                                      account.Item4);
+                account = newAccount;
+            }
         }
 
         Console.WriteLine("Uspješno izbrisane transakcije");
@@ -994,10 +1221,22 @@ class Program
 
     static Tuple<int, decimal, string, List<Dictionary<string, string>>> DeleteIncomeTransactions (Tuple<int, decimal, string, List<Dictionary<string, string>>> account)
     {
+        var newAccount = Tuple.Create(0,0.00m, "", new List<Dictionary<string, string>>());
+        var balance = account.Item2;
+
         foreach (var item in account.Item4.ToList())
         {
             if (item["type"] == "Income")
+            {
                 account.Item4.Remove(item);
+                balance -= decimal.Parse(item["amount"]);
+                newAccount = Tuple.Create(account.Item1,
+                                        balance,
+                                      account.Item3,
+                                      account.Item4);
+                account = newAccount;
+            }
+
         }
 
         Console.WriteLine("Uspjesno izbrisane transakcije!");
@@ -1008,10 +1247,23 @@ class Program
 
     static Tuple<int, decimal, string, List<Dictionary<string, string>>> DeleteExpenseTransactions(Tuple<int, decimal, string, List<Dictionary<string, string>>> account)
     {
+        var newAccount = Tuple.Create(0, 0.00m, "", new List<Dictionary<string, string>>());
+        var balance = account.Item2;
+
         foreach (var item in account.Item4.ToList())
         {
             if (item["type"] == "Expense")
+            {
                 account.Item4.Remove(item);
+                account.Item4.Remove(item);
+                balance += decimal.Parse(item["amount"]);
+                newAccount = Tuple.Create(account.Item1,
+                                        balance,
+                                      account.Item3,
+                                      account.Item4);
+                account = newAccount;
+            }
+
         }
 
         Console.WriteLine("Uspjesno izbrisane transakcije!");
@@ -1022,6 +1274,9 @@ class Program
 
     static Tuple<int, decimal, string, List<Dictionary<string, string>>> DeleteTransactionsByCategory(Tuple<int, decimal, string, List<Dictionary<string, string>>> account)
     {
+        var newAccount = Tuple.Create(0, 0.00m, "", new List<Dictionary<string, string>>());
+        var balance = account.Item2;
+
         do
         {
             Console.Clear();
@@ -1045,7 +1300,15 @@ class Program
                 foreach (var item in account.Item4.ToList())
                 {
                     if (item["category"] == option)
+                    {
                         account.Item4.Remove(item);
+                        balance = item["type"] == "Income" ? balance - decimal.Parse(item["amount"]) : balance + decimal.Parse(item["amount"]);
+                        newAccount = Tuple.Create(account.Item1,
+                                              balance,
+                                              account.Item3,
+                                              account.Item4);
+                        account = newAccount;
+                    }
                 }
 
                 break;
@@ -1132,6 +1395,145 @@ class Program
         } while (!exit);
 
         return account;
+    }
+
+    static void ShowTransactions(Tuple<int, decimal, string, List<Dictionary<string, string>>> account)
+    {
+        var transactions = new List<Dictionary<string, string>>();
+
+        do
+        {
+            Console.Clear();
+            Console.WriteLine("Pregled transakcija:");
+            Console.WriteLine("1. Sve transakcije");
+            Console.WriteLine("2. Transakcije sortirane po iznosu uzlazno");
+            Console.WriteLine("3. Transakcije sortirane po iznosu silazno");
+            Console.WriteLine("4. Transakcije opisano po opisu abecedno");
+            Console.WriteLine("5. Transakcije sortirane po datumu uzlazno");
+            Console.WriteLine("6. Transakcije sortirane po datumu silazno");
+            Console.WriteLine("7. Svi prihodi");
+            Console.WriteLine("8. Svi rashodi");
+            Console.WriteLine("9. Transakcije po kategoriji");
+            Console.WriteLine("0. Natrag");
+            Console.WriteLine("Tvoj odabir:");
+
+            if (int.TryParse(Console.ReadLine(), out var option) && option == 0)
+                break;
+
+            transactions = FilterTransactions(account.Item4, option);
+
+            if (transactions == null)
+            {
+                Console.WriteLine("Greska pri filtriranju!");
+                Console.ReadLine();
+            }
+        } while (true);
+    }
+
+    static List<Dictionary<string, string>> FilterTransactions(List<Dictionary<string, string>> transactions, int option)
+    {
+        var sortedTransactions = new List<Dictionary<string, string>>();
+        var category = string.Empty;
+
+        switch (option)
+        {
+            case 1:
+                DisplayTransactions(transactions);
+                break;
+            case 2:
+                sortedTransactions = transactions.OrderBy(item => decimal.Parse(item["amount"])).ToList();
+                DisplayTransactions(sortedTransactions);
+                break;
+            case 3:
+                sortedTransactions = transactions.OrderByDescending(item => decimal.Parse(item["amount"])).ToList();
+                DisplayTransactions(sortedTransactions);
+                break;
+            case 4:
+                sortedTransactions = transactions.OrderBy(item => item["description"]).ToList();
+                DisplayTransactions(sortedTransactions);
+                break;
+            case 5:
+                sortedTransactions = transactions.OrderBy(item => DateTime.Parse(item["date"])).ToList();
+                DisplayTransactions(sortedTransactions);
+                break;
+            case 6:
+                sortedTransactions = transactions.OrderByDescending(item => DateTime.Parse(item["date"])).ToList();
+                DisplayTransactions(sortedTransactions);
+                break;
+            case 7:
+                sortedTransactions = transactions.Where(item => item["type"]=="Income").ToList();
+                DisplayTransactions(sortedTransactions);
+                break;
+            case 8:
+                sortedTransactions = transactions.Where(item => item["type"]=="Expense").ToList();
+                DisplayTransactions(sortedTransactions);
+                break;
+            case 9:
+                category = InputTransactionCategory(InputTransactionType());
+                sortedTransactions = transactions.Where(item => item["category"] == category).ToList();
+                DisplayTransactions(sortedTransactions);
+                break;
+            default:
+                transactions = null;
+                break;
+        }
+
+        return transactions;
+    }
+
+    static void FinancialReport(Tuple<int, decimal, string, List<Dictionary<string, string>>> account)
+    {
+        var exit = false;
+
+        do
+        {
+            Console.Clear();
+            Console.WriteLine("Financijsko izvješće:");
+            Console.WriteLine($"Stanje: {account.Item2} EUR");
+
+            if (account.Item2 < 0.00m)
+                Console.WriteLine("RAČUN U MINUSU!");
+
+            Console.WriteLine($"Broj ukupnih transakcija: {account.Item4.Count}");
+
+            Console.WriteLine("\nDodatna izvješća: ");
+            Console.WriteLine("1. Ukupan iznos prihoda i rashoda za odabrani mjesec i godinu: ");
+            Console.WriteLine("2. Postotak udjela rashoda za odabranu kategoriju: ");
+            Console.WriteLine("3. Prosječni iznos transakcije za odabrani mjesec i godinu: ");
+            Console.WriteLine("4. Prosječni iznos transakcije za odabranu kategoriju: ");
+            Console.WriteLine("0. Natrag");
+            Console.WriteLine("Tvoj odabir:");
+
+            if(!int.TryParse(Console.ReadLine(), out var option)){
+                Console.WriteLine("Nepoznata opcija!");
+                Console.ReadLine();
+                continue;
+            }
+
+            switch (option)
+            {
+                case 0:
+                    exit = true;
+                    break;
+                case 1:
+                    DisplaySumOfTransactionsByDate(account.Item4);
+                    break;
+                case 2:
+                    DisplayExpensePercentageByCategory(account.Item4);
+                    break;
+                case 3:
+                    DisplayAverageAmountTransactionsByDate(account.Item4);
+                    break;
+                case 4:
+                    DisplayAverageAmountTransactionsByCategory(account.Item4);
+                    break;
+                default:
+                    Console.WriteLine("Nepoznata opcija!");
+                    Console.ReadLine();
+                    break;
+            }
+
+        } while (!exit);
     }
 }
 
