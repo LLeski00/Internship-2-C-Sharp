@@ -2,6 +2,7 @@
 using Microsoft.VisualBasic.FileIO;
 using System;
 using System.Collections.Generic;
+using System.Net.Http.Headers;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Security.Principal;
@@ -14,12 +15,19 @@ class Program
     static int lastUserId = 0;
     static int lastAccountId = 0;
     static int lastTransactionId = 0;
+    static bool usersInitialized = false;
 
     static void Main()
     {
-        users.Add(GenerateDefaultUser("Ivo", "Ivic", new DateTime(2000,11,11)));
-        users.Add(GenerateDefaultUser("Marko", "Maric", new DateTime(2000, 11, 11)));
-        users.Add(GenerateDefaultUser("Stipe", "Stipic", new DateTime(2000, 11, 11)));
+        if (!usersInitialized)
+        {
+            users.Add(GenerateDefaultUser("Ivo", "Ivic", new DateTime(1990, 11, 11)));
+            users.Add(GenerateDefaultUser("Marko", "Maric", new DateTime(1980, 12, 11)));
+            users.Add(GenerateDefaultUser("Stipe", "Stipic", new DateTime(2000, 11, 11)));
+            users.Add(GenerateDefaultUser("Mia", "Mijic", new DateTime(2004, 10, 11)));
+            users.Add(GenerateDefaultUser("Dario", "Daric", new DateTime(2000, 11, 10)));
+            usersInitialized = true;
+        }
 
         var shutdown = false;
 
@@ -51,6 +59,43 @@ class Program
                     break;
             }
         } while (!shutdown);
+
+        Environment.Exit(0);
+    }
+
+    static bool AreYouSure()
+    {
+        var choice = false;
+        do
+        {
+            Console.WriteLine("Jeste li sigurni da želite izvršiti ovu radnju? (y/n)");
+            var input = Console.ReadLine();
+
+            if (input == null || input == string.Empty)
+            {
+                Console.WriteLine("Nepoznata opcija!");
+                Console.ReadLine();
+                break;
+            }
+
+            if (input.ToLower() == "y")
+            {
+                choice = true;
+                break;
+            }
+            else if (input.ToLower() == "n") { 
+                choice = false;
+                break;
+            }
+            else
+            {
+                Console.WriteLine("Nepoznata opcija!");
+                Console.ReadLine();
+            }
+
+        } while (true);
+
+        return choice;
     }
 
     static Tuple<int, string, string, DateTime, List<Tuple<int, decimal, string, List<Dictionary<string, string>>>>> GenerateDefaultUser(string name, string surname, DateTime date)
@@ -61,12 +106,12 @@ class Program
             {"description", "Standardna transakcija"},
             {"type", "Income"},
             {"category", "Salary"},
-            {"date", "2000-11-11"},
+            {"date", "1990-12-11"},
         };
         var transaction2 = new Dictionary<string, string>() {
             {"id", lastTransactionId++.ToString()},
             {"amount", "10.00" },
-            {"description", "Standardna transakcija"},
+            {"description", "Tortilja"},
             {"type", "Expense"},
             {"category", "Food"},
             {"date", "2000-11-11"},
@@ -77,7 +122,7 @@ class Program
             {"description", "Standardna transakcija"},
             {"type", "Income"},
             {"category", "Gift"},
-            {"date", "2000-11-11"},
+            {"date", "2006-10-11"},
         };
 
         var currentAccountTransactions = new List<Dictionary<string, string>>();
@@ -106,14 +151,14 @@ class Program
         giroAccountTransactions.Add(transaction2);
         giroAccountTransactions.Add(transaction3);
 
-        var giroAccount = Tuple.Create(0, 0.00m + balance, "Giro", giroAccountTransactions);
+        var giroAccount = Tuple.Create(1, 0.00m + balance, "Giro", giroAccountTransactions);
 
         var prepaidAccountTransactions = new List<Dictionary<string, string>>();
         prepaidAccountTransactions.Add(transaction1);
         prepaidAccountTransactions.Add(transaction2);
         prepaidAccountTransactions.Add(transaction3);
 
-        var prepaidAccount = Tuple.Create(0, 0.00m + balance, "Prepaid", prepaidAccountTransactions);
+        var prepaidAccount = Tuple.Create(2, 0.00m + balance, "Prepaid", prepaidAccountTransactions);
 
         var accounts = new List<Tuple<int, decimal, string, List<Dictionary<string, string>>>>();
         accounts.Add(currentAccount);
@@ -216,6 +261,10 @@ class Program
 
             switch (option)
             {
+                case 0: 
+                    Main();
+                    exit = true; 
+                    break;
                 case 1:
                     account = AddNewTransaction(user.Item5[accountIndex]);
                     user.Item5[accountIndex] = account;
@@ -234,7 +283,28 @@ class Program
                 case 5:
                     FinancialReport(user.Item5[accountIndex]);
                     break;
-                case 0:
+                case 6:
+                    var accounts = InternalTransfer(user, accountIndex);
+                    user.Item5[accountIndex] = accounts[0];
+                    user.Item5[accounts[1].Item1] = accounts[1];
+                    break;
+                case 7:
+                    var result = Transfer(user.Item5[accountIndex]);
+                    user.Item5[accountIndex] = result.Item2[0];
+                    var userIdx = result.Item1-1;
+                    foreach(var acc in users[userIdx].Item5)
+                    {
+                        Console.WriteLine($"{users[userIdx]}");
+                        Console.WriteLine($"{acc}");
+                        Console.ReadLine();
+                        if (acc.Item1 == result.Item2[1].Item1)
+                        {
+                            users[userIdx].Item5[acc.Item1] = result.Item2[1];
+                            break;
+                        }
+                    }
+                    break;
+                case 8:
                     exit = true;
                     break;
                 default:
@@ -274,7 +344,8 @@ class Program
         Console.WriteLine("1. Sortirani abecedno");
         Console.WriteLine("2. Korisnici stariji od 30 godina");
         Console.WriteLine("3. Zaduženi korisnici");
-        Console.WriteLine("0. Natrag");
+        Console.WriteLine("4. Natrag");
+        Console.WriteLine("0. Natrag na glavni izbornik");
         Console.Write("Tvoj odabir: ");
     }
 
@@ -285,7 +356,8 @@ class Program
         Console.WriteLine("1. Ime");
         Console.WriteLine("2. Prezime");
         Console.WriteLine("3. Datum rođenja");
-        Console.WriteLine("0. Natrag");
+        Console.WriteLine("4. Natrag");
+        Console.WriteLine("0. Natrag na glavni izbornik");
         Console.Write("Tvoj odabir: ");
     }
 
@@ -297,7 +369,10 @@ class Program
         Console.WriteLine("3. Uređivanje transakcije");
         Console.WriteLine("4. Pregled transakcija");
         Console.WriteLine("5. Financijsko izvješće");
-        Console.WriteLine("0. Natrag");
+        Console.WriteLine("6. Interni prijenos");
+        Console.WriteLine("7. Prijenos");
+        Console.WriteLine("8. Natrag");
+        Console.WriteLine("0. Natrag na glavni izbornik");
         Console.Write("Tvoj odabir: ");
     }
 
@@ -553,6 +628,9 @@ class Program
 
             if (DateTime.TryParse(Console.ReadLine(), out var date) && firstName != string.Empty && lastName != string.Empty)
             {
+                if (!AreYouSure())
+                    break;
+
                 var user = GenerateDefaultUser(firstName, lastName, date);
                 users.Add(user);
                 Console.WriteLine("Korisnik uspješno dodan!");
@@ -578,12 +656,14 @@ class Program
             Console.WriteLine("Pretraga po:");
             Console.WriteLine("1. ID");
             Console.WriteLine("2. Ime i prezime");
-            Console.WriteLine("0. Natrag");
+            Console.WriteLine("3. Natrag");
+            Console.WriteLine("0. Natrag na glavni izbornik");
             int.TryParse(Console.ReadLine(), out var filter);
             
             switch (filter)
             {
                 case 0:
+                    Main();
                     exit = true;
                     break;
                 case 1:
@@ -601,15 +681,25 @@ class Program
                         }
                     } while (users == null);
 
+                    if (!AreYouSure())
+                        break;
+
                     users.Remove(user);
                     Console.WriteLine("Korisnik uspješno izbrisan!");
                     Console.ReadLine();
                     break;
                 case 2:
                     user = FindUserByName();
+
+                    if (!AreYouSure())
+                        break;
+
                     users.Remove(user);
                     Console.WriteLine("Korisnik uspješno izbrisan!");
                     Console.ReadLine();
+                    break;
+                case 3:
+                    exit = true;
                     break;
                 default:
                     Console.WriteLine("Nepoznata opcija!");
@@ -657,6 +747,7 @@ class Program
             switch (option)
             {
                 case 0:
+                    Main();
                     exit = true;
                     break;
                 case 1:
@@ -667,6 +758,10 @@ class Program
                         Console.ReadLine();
                         break;
                     }
+
+                    if (!AreYouSure())
+                        break;
+
                     newUser = Tuple.Create(user.Item1, firstName, user.Item3, user.Item4, user.Item5);
                     users[userIndex] = newUser;
                     Console.WriteLine("Uspješna izmjena!");
@@ -681,6 +776,10 @@ class Program
                         Console.ReadLine();
                         break;
                     }
+
+                    if (!AreYouSure())
+                        break;
+
                     newUser = Tuple.Create(user.Item1, user.Item2, lastName, user.Item4, user.Item5);
                     users[userIndex] = newUser;
                     Console.WriteLine("Uspješna izmjena!");
@@ -694,10 +793,17 @@ class Program
                         Console.ReadLine();
                         break;
                     }
+
+                    if (!AreYouSure())
+                        break;
+
                     newUser = Tuple.Create(user.Item1, user.Item2, user.Item3, birthdate, user.Item5);
                     users[userIndex] = newUser;
                     Console.WriteLine("Uspješna izmjena!");
                     Console.ReadLine();
+                    break;
+                case 4:
+                    exit=true;
                     break;
                 default:
                     Console.WriteLine("Nepoznata opcija!");
@@ -729,6 +835,7 @@ class Program
             switch (filter)
             {
                 case 0:
+                    Main();
                     exit = true;
                     break;
                 case 1:
@@ -745,6 +852,9 @@ class Program
                     Console.WriteLine("ZADUZENI KORISNICI");
                     DisplayUsers(sortedUsers, "InDebt");
                     Console.ReadLine();
+                    break;
+                case 4:
+                    exit = true; 
                     break;
                 default:
                     Console.WriteLine("Nepoznata opcija!");
@@ -992,7 +1102,8 @@ class Program
             Console.WriteLine("Unos nove transakcije:");
             Console.WriteLine("1. Trenutno izvršena transakcija");
             Console.WriteLine("2. Ranije izvršena transakcija");
-            Console.WriteLine("0. Natrag");
+            Console.WriteLine("3. Natrag");
+            Console.WriteLine("0. Natrag na glavni izbornik");
             Console.WriteLine("Tvoj odabir:");
 
             if (!int.TryParse(Console.ReadLine(), out var option))
@@ -1005,10 +1116,15 @@ class Program
             switch (option)
             {
                 case 0:
+                    Main();
                     exit = true;
                     break;
                 case 1:
                     transaction = AddTransactionData(transaction);
+
+                    if (!AreYouSure())
+                        break;
+
                     transaction["date"] = DateTime.Now.ToString();
                     newBalance = transaction["type"] == "Income" ? account.Item2 + decimal.Parse(transaction["amount"]) : account.Item2 - decimal.Parse(transaction["amount"]);
                     newAccount = Tuple.Create(account.Item1, newBalance, account.Item3, account.Item4);
@@ -1020,12 +1136,19 @@ class Program
                 case 2:
                     transaction = AddTransactionData(transaction);
                     transaction["date"] = InputDate().ToString();
+
+                    if (!AreYouSure())
+                        break;
+
                     newBalance = transaction["type"] == "Income" ? account.Item2 + decimal.Parse(transaction["amount"]) : account.Item2 - decimal.Parse(transaction["amount"]);
                     newAccount = Tuple.Create(account.Item1, newBalance, account.Item3, account.Item4);
                     account = newAccount;
                     account.Item4.Add(transaction);
                     Console.WriteLine("Uspjesno dodana transakcija");
                     Console.ReadLine();
+                    break;
+                case 3:
+                    exit = true;
                     break;
                 default:
                     Console.WriteLine("Nepoznata opcija!");
@@ -1062,7 +1185,8 @@ class Program
             Console.WriteLine("4. Sve prihode");
             Console.WriteLine("5. Sve rashode");
             Console.WriteLine("6. Po kategoriji");
-            Console.WriteLine("0. Natrag");
+            Console.WriteLine("7. Natrag");
+            Console.WriteLine("0. Natrag na glavni izbornik");
             Console.WriteLine("Tvoj odabir: ");
 
             if (!int.TryParse(Console.ReadLine(), out var option))
@@ -1075,6 +1199,7 @@ class Program
             switch (option)
             {
                 case 0:
+                    Main();
                     exit = true;
                     break;
                 case 1:
@@ -1094,6 +1219,9 @@ class Program
                     break;
                 case 6:
                     account = DeleteTransactionsByCategory(account);
+                    break;
+                case 7:
+                    exit = true;
                     break;
                 default:
                     Console.WriteLine("Nepoznata opcija!");
@@ -1125,6 +1253,9 @@ class Program
                 Console.ReadLine();
             }
         } while (!validTransaction);
+
+        if (!AreYouSure())
+            return account;
 
         account.Item4.Remove(transaction);
 
@@ -1158,6 +1289,9 @@ class Program
             }
         } while (amount <= 0.00m);
 
+        if (!AreYouSure())
+            return account;
+
         foreach (var item in account.Item4.ToList())
         {
             if (decimal.Parse(item["amount"]) < amount)
@@ -1171,8 +1305,6 @@ class Program
                 account = newAccount;
             }
         }
-
-        
 
         Console.WriteLine("Uspješno izbrisane transakcije");
         Console.ReadLine();
@@ -1198,6 +1330,9 @@ class Program
             }
         } while (amount <= 0.00m);
 
+        if (!AreYouSure())
+            return account;
+
         foreach (var item in account.Item4.ToList())
         {
             if (decimal.Parse(item["amount"]) > amount)
@@ -1220,6 +1355,9 @@ class Program
 
     static Tuple<int, decimal, string, List<Dictionary<string, string>>> DeleteIncomeTransactions (Tuple<int, decimal, string, List<Dictionary<string, string>>> account)
     {
+        if (!AreYouSure())
+            return account;
+
         var newAccount = Tuple.Create(0,0.00m, "", new List<Dictionary<string, string>>());
         var balance = account.Item2;
 
@@ -1246,6 +1384,9 @@ class Program
 
     static Tuple<int, decimal, string, List<Dictionary<string, string>>> DeleteExpenseTransactions(Tuple<int, decimal, string, List<Dictionary<string, string>>> account)
     {
+        if (!AreYouSure())
+            return account;
+
         var newAccount = Tuple.Create(0, 0.00m, "", new List<Dictionary<string, string>>());
         var balance = account.Item2;
 
@@ -1296,6 +1437,9 @@ class Program
             }
             else
             {
+                if (!AreYouSure())
+                    return account;
+
                 foreach (var item in account.Item4.ToList())
                 {
                     if (item["category"] == option)
@@ -1325,6 +1469,8 @@ class Program
     {
         var exit = false;
         var transaction = new Dictionary<string, string>();
+        var newAccount = Tuple.Create(0, 0.00m, "", new List<Dictionary<string, string>>());
+        var balance = 0.00m;
 
         do
         {
@@ -1345,7 +1491,8 @@ class Program
             Console.WriteLine("3. Opis");
             Console.WriteLine("4. Kategorija");
             Console.WriteLine("5. Datum");
-            Console.WriteLine("0. Natrag");
+            Console.WriteLine("6. Natrag");
+            Console.WriteLine("0. Natrag na glavni izbornik");
             Console.WriteLine("Tvoj odabir:");
 
             if(!int.TryParse(Console.ReadLine(), out var option))
@@ -1358,32 +1505,74 @@ class Program
             switch (option)
             {
                 case 0:
+                    Main();
                     exit = true;
                     break;
                 case 1:
                     account.Item4.Remove(transaction);
                     transaction["type"] = InputTransactionType();
+                    transaction["category"] = InputTransactionCategory(transaction["type"]);
+
+                    if (!AreYouSure())
+                        break;
+
                     account.Item4.Add(transaction);
+                    balance = transaction["type"] == "Income" ? account.Item2 + 2 * decimal.Parse(transaction["amount"]) : account.Item2 - 2 * decimal.Parse(transaction["amount"]);
+                    newAccount = Tuple.Create(account.Item1, balance, account.Item3, account.Item4);
+                    account = newAccount;
+                    Console.WriteLine("Uspješno izmjenjena transakcija!");
+                    Console.ReadLine();
                     break;
                 case 2:
                     account.Item4.Remove(transaction);
+                    var oldAmount = decimal.Parse(transaction["amount"]);
                     transaction["amount"] = InputTransactionAmount();
+
+                    if (!AreYouSure())
+                        break;
+
                     account.Item4.Add(transaction);
+                    balance = transaction["type"] == "Income" ? account.Item2 + (decimal.Parse(transaction["amount"]) - oldAmount) : account.Item2 - (decimal.Parse(transaction["amount"]) - oldAmount);
+                    newAccount = Tuple.Create(account.Item1, balance, account.Item3, account.Item4);
+                    account = newAccount;
+                    Console.WriteLine("Uspješno izmjenjena transakcija!");
+                    Console.ReadLine();
                     break;
                 case 3:
                     account.Item4.Remove(transaction);
                     transaction["description"] = InputTransactionDescription();
+
+                    if (!AreYouSure())
+                        break;
+
                     account.Item4.Add(transaction);
+                    Console.WriteLine("Uspješno izmjenjena transakcija!");
+                    Console.ReadLine();
                     break;
                 case 4:
                     account.Item4.Remove(transaction);
                     transaction["category"] = InputTransactionCategory(transaction["type"]);
+
+                    if (!AreYouSure())
+                        break;
+
                     account.Item4.Add(transaction);
+                    Console.WriteLine("Uspješno izmjenjena transakcija!");
+                    Console.ReadLine();
                     break;
                 case 5:
                     account.Item4.Remove(transaction);
                     transaction["date"] = InputDate().ToString();
+
+                    if (!AreYouSure())
+                        break;
+
                     account.Item4.Add(transaction);
+                    Console.WriteLine("Uspješno izmjenjena transakcija!");
+                    Console.ReadLine();
+                    break;
+                case 6:
+                    exit = true;
                     break;
                 default:
                     Console.WriteLine("Nepoznata opcija!");
@@ -1413,11 +1602,16 @@ class Program
             Console.WriteLine("7. Svi prihodi");
             Console.WriteLine("8. Svi rashodi");
             Console.WriteLine("9. Transakcije po kategoriji");
-            Console.WriteLine("0. Natrag");
+            Console.WriteLine("10. Natrag");
+            Console.WriteLine("0. Natrag na glavni izbornik");
             Console.WriteLine("Tvoj odabir:");
 
-            if (int.TryParse(Console.ReadLine(), out var option) && option == 0)
+            if (int.TryParse(Console.ReadLine(), out var option) && (option == 0 || option == 10))
+            {
+                if (option == 0)
+                    Main();
                 break;
+            }
 
             transactions = FilterTransactions(account.Item4, option);
 
@@ -1500,7 +1694,8 @@ class Program
             Console.WriteLine("2. Postotak udjela rashoda za odabranu kategoriju: ");
             Console.WriteLine("3. Prosječni iznos transakcije za odabrani mjesec i godinu: ");
             Console.WriteLine("4. Prosječni iznos transakcije za odabranu kategoriju: ");
-            Console.WriteLine("0. Natrag");
+            Console.WriteLine("5. Natrag");
+            Console.WriteLine("0. Natrag na glavni izbornik");
             Console.WriteLine("Tvoj odabir:");
 
             if(!int.TryParse(Console.ReadLine(), out var option)){
@@ -1512,6 +1707,7 @@ class Program
             switch (option)
             {
                 case 0:
+                    Main();
                     exit = true;
                     break;
                 case 1:
@@ -1526,6 +1722,9 @@ class Program
                 case 4:
                     DisplayAverageAmountTransactionsByCategory(account.Item4);
                     break;
+                case 5:
+                    exit = true;
+                    break;
                 default:
                     Console.WriteLine("Nepoznata opcija!");
                     Console.ReadLine();
@@ -1533,6 +1732,145 @@ class Program
             }
 
         } while (!exit);
+    }
+
+    static List<Tuple<int, decimal, string, List<Dictionary<string, string>>>> InternalTransfer(Tuple<int, string, string, DateTime, List<Tuple<int, decimal, string, List<Dictionary<string, string>>>>> user, int senderId)
+    {
+        var accounts = new List<Tuple<int, decimal, string, List<Dictionary<string, string>>>>();
+        var sender = Tuple.Create(0, 0.00m, "", new List<Dictionary<string, string>>());
+        var receiver = Tuple.Create(0, 0.00m, "", new List<Dictionary<string, string>>());
+        var receiverFound = false;
+
+        do
+        {
+            foreach (var item in user.Item5)
+            {
+                if (item.Item1 == senderId) {
+                    sender = item;
+                }
+            }
+
+            var receiverId = InputId();
+
+            foreach (var item in user.Item5)
+            {
+                if (item.Item1 == receiverId) {
+                    receiverFound = true;
+                    receiver = item;
+                }
+            }
+
+            if(!receiverFound)
+            {
+                Console.WriteLine("Primatelj nije pronađen");
+                Console.ReadLine();
+                continue;
+            }
+
+            Console.WriteLine("Unesite iznos koji zelite poslati:");
+            if(!decimal.TryParse(Console.ReadLine(), out var amount) || amount <= 0.00m)
+            {
+                Console.WriteLine("Krivi unos");
+                Console.ReadLine();
+                continue;
+            }
+
+            var newSender = Tuple.Create(sender.Item1, sender.Item2 - amount, sender.Item3, sender.Item4);
+            var newReceiver = Tuple.Create(receiver.Item1, receiver.Item2 + amount, receiver.Item3, receiver.Item4);
+
+            accounts.Add(newSender);
+            accounts.Add(newReceiver);
+
+            Console.WriteLine("Uspješan prijenos!");
+            Console.ReadLine();
+
+            break;
+        } while (true);
+
+        return accounts;
+    }
+
+    static Tuple<int, List<Tuple<int, decimal, string, List<Dictionary<string, string>>>>> Transfer(Tuple<int, decimal, string, List<Dictionary<string, string>>> sender)
+    {
+        var accounts = new List<Tuple<int, decimal, string, List<Dictionary<string, string>>>>();
+        var receiver = GenerateDefaultUser("", "", DateTime.Now);
+        var receiverAccount = Tuple.Create(0, 0.00m, "", new List<Dictionary<string, string>>());
+        var receiverFound = false;
+        var receiverAccountFound = false;
+        var userId = 0;
+        var userIdx = 0;
+
+        do
+        {
+            Console.Clear();
+            Console.WriteLine("Unošenje primatelja");
+            Console.ReadLine();
+            var receiverId = InputId();
+
+            userId = 0;
+            foreach (var user in users)
+            {
+                userId++;
+                if (user.Item1 == receiverId)
+                {
+                    receiverFound = true;
+                    receiver = user;
+                    userIdx = userId;
+                }
+            }
+
+            if (!receiverFound)
+            {
+                Console.WriteLine("Primatelj nije pronađen");
+                Console.ReadLine();
+                continue;
+            }
+
+            Console.Clear();
+            Console.WriteLine("Unošenje računa");
+            Console.ReadLine();
+
+            var receiverAccountId = InputId();
+
+            foreach (var item in receiver.Item5)
+            {
+                if (item.Item1 == receiverAccountId)
+                {
+                    receiverAccountFound = true;
+                    receiverAccount = item;
+                }
+            }
+        
+            if (!receiverAccountFound)
+            {
+                Console.WriteLine("Račun nije pronađen");
+                Console.ReadLine();
+                continue;
+            }
+
+            Console.WriteLine("Unesite iznos koji zelite poslati:");
+            if (!decimal.TryParse(Console.ReadLine(), out var amount) || amount <= 0.00m)
+            {
+                Console.WriteLine("Krivi unos");
+                Console.ReadLine();
+                continue;
+            }
+
+            var newSender = Tuple.Create(sender.Item1, sender.Item2 - amount, sender.Item3, sender.Item4);
+            var newReceiver = Tuple.Create(receiverAccount.Item1, receiverAccount.Item2 + amount, receiverAccount.Item3, receiverAccount.Item4);
+
+            accounts.Add(newSender);
+            accounts.Add(newReceiver);
+
+            Console.WriteLine("Uspješan prijenos!");
+            Console.ReadLine();
+
+            break;
+        } while (true);
+
+        var result = Tuple.Create(userIdx, accounts);
+
+        return result;
     }
 }
 
